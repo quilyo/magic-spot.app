@@ -4,7 +4,18 @@ Example Python script to send parking data to MagicSpot web application.
 This script reads parking_status.json and posts it to the Supabase server.
 
 IMPORTANT: Replace the SUPABASE_PROJECT_ID and SUPABASE_ANON_KEY with your actual values.
-You can find these in your Supabase project settings or in /utils/supabase/info.tsx
+You can find these in your Supabase project settings at https://supabase.com/dashboard/project/_/settings/api
+
+For better security, consider using environment variables instead of hardcoding:
+    import os
+    SUPABASE_PROJECT_ID = os.getenv('SUPABASE_PROJECT_ID', 'your-project-id-here')
+    SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY', 'your-anon-key-here')
+
+Or use python-dotenv to load from a .env file:
+    from dotenv import load_dotenv
+    load_dotenv()
+    SUPABASE_PROJECT_ID = os.getenv('SUPABASE_PROJECT_ID')
+    SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY')
 """
 
 import json
@@ -12,8 +23,9 @@ import requests
 from datetime import datetime
 
 # REPLACE THESE WITH YOUR ACTUAL VALUES
-SUPABASE_PROJECT_ID = "your-project-id-here"  # Get from /utils/supabase/info.tsx
-SUPABASE_ANON_KEY = "your-anon-key-here"      # Get from /utils/supabase/info.tsx
+# Or use environment variables as shown in the docstring above
+SUPABASE_PROJECT_ID = "your-project-id-here"
+SUPABASE_ANON_KEY = "your-anon-key-here"
 
 # API endpoint
 API_URL = f"https://{SUPABASE_PROJECT_ID}.supabase.co/functions/v1/make-server-34bbc245/parking-data"
