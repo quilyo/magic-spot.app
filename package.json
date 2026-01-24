@@ -1,0 +1,32 @@
+{
+  "name": "magic-spot-app",
+  "version": "1.0.0",
+  "description": "Magic Spot App - A web application hosted on GitHub Pages",
+  "main": "index.js",
+  "scripts": {
+    "start": "npx http-server ./public -p 8080",
+    "build": "npm run copy-files",
+    "copy-files": "mkdir -p dist && cp -r public/* dist/",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/quilyo/magic-spot.app.git"
+  },
+  "keywords": [
+    "magic-spot",
+    "web-app",
+    "github-pages"
+  ],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/quilyo/magic-spot.app/issues"
+  },
+  "homepage": "https://quilyo.github.io/magic-spot.app/",
+  "devDependencies": {
+    "gh-pages": "^6.1.1",
+    "http-server": "^14.1.1"
+  }
+}
