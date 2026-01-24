@@ -4,8 +4,11 @@
   import path from 'path';
 
   export default defineConfig({
-    base: '/magic-spot.app/',
-    plugins: [react()],
+  base: '/magic-spot.app/',
+  build: {
+    outDir: 'dist',
+  },
+  plugins: [react()],
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
       alias: {
