@@ -3,10 +3,12 @@ import { supabase } from '../utils/supabase/client';
 
 export const fetchParkingData = async (): Promise<ParkingData> => {
   try {
+    // Fetch from normalized parking_spots table
+    // This table is automatically synced from parking_status JSON by a database trigger
     const { data: spots, error } = await supabase
       .from('parking_spots')
       .select('*')
-      .order('id');
+      .order('area, spot_id');
 
     if (error) throw error;
 
@@ -15,7 +17,7 @@ export const fetchParkingData = async (): Promise<ParkingData> => {
       occupied: spot.occupied,
       lat: spot.lat,
       lon: spot.lon,
-      name: spot.name,
+      name: spot.name || `${spot.area} Spot ${spot.spot_id}`,
       area: spot.area,
       timestamp: spot.timestamp,
     }));
