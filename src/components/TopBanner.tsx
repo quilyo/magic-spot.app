@@ -30,7 +30,7 @@ export function TopBanner({
   showAdminPanel
 }: TopBannerProps) {
   return (
-    <div className="bg-white border-b-2 border-gray-300 px-6 py-4 shadow-md">
+    <div className="bg-black border-b-2 border-gray-300 px-6 py-4 shadow-md">
       <div className="flex items-center justify-between">
         {/* Empty left side for balance */}
         <div></div>
