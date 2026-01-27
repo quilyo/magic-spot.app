@@ -1,5 +1,5 @@
 
-  # Clone Magic Spot App
+  # Magic Spot App
 
   This is a code bundle for Clone Magic Spot App. The original project is available at https://www.figma.com/design/zo4oir4F9h2OZ8brV8sXWa/Clone-Magic-Spot-App.
 
