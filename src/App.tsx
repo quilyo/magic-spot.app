@@ -35,7 +35,7 @@ export default function App() {
   const [checkingSession, setCheckingSession] = useState(true);
   const [mapResetTrigger, setMapResetTrigger] = useState(0);
 
-  // Load parking data immediately for background preview
+  // Load parking data for authenticated users only
   const loadParkingData = async () => {
     setLoading(true);
     try {
@@ -72,6 +72,8 @@ export default function App() {
             email: session.user.email,
             name: session.user.name,
           });
+          // Load parking data only after confirming authentication
+          await loadParkingData();
         }
       } catch (error) {
         console.error("Session check failed:", error);
@@ -80,8 +82,7 @@ export default function App() {
       }
     };
 
-    // Load data and check session in parallel
-    loadParkingData();
+    // Only check session, don't load data yet
     checkSession();
   }, []);
 
@@ -105,6 +106,8 @@ export default function App() {
         name: result.user.name,
       });
       toast.success("Logged in successfully");
+      // Load parking data after successful login
+      await loadParkingData();
     } catch (error) {
       console.error("Login error:", error);
       throw error;
@@ -130,6 +133,8 @@ export default function App() {
       toast.success(
         `Welcome, ${name}! Account created successfully`,
       );
+      // Load parking data after successful signup
+      await loadParkingData();
     } catch (error) {
       console.error("Signup error:", error);
       throw error;
