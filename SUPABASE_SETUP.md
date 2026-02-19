@@ -121,8 +121,36 @@ supabase
 
 ### Want to manually resync?
 - Go to SQL Editor in Supabase
-- Run: `SELECT expand_parking_status_to_spots()`
+- Run: `SELECT sync_parking_spots_manual()`
 - This manually triggers the expansion function
+
+## Security Model
+
+The database uses Row Level Security (RLS) to protect your data:
+
+### parking_status table (Raw Backend Data)
+- **Protected**: Only authenticated users can read or write
+- **Purpose**: Stores raw JSON data from your backend
+- **Access**: Backend uses service role key or authenticated user credentials
+- This prevents public users from accessing or modifying raw backend data
+
+### parking_spots table (Public Frontend Data)
+- **Public Read**: Anyone can view parking spots (needed for the public map)
+- **Protected Write**: Only authenticated users can modify spots
+- **Purpose**: Stores normalized, processed parking data for the frontend
+- This allows the app to display parking availability publicly while protecting admin functions
+
+### Why This Matters
+- Public users can only see processed parking spots, not raw backend data
+- Backend can securely push updates using authenticated credentials
+- Database triggers run with elevated permissions to sync data automatically
+- Admin features (updating spot names, manual edits) require authentication
+
+### Backend Authentication
+Your backend should use the **service role key** (not the anon key) when writing to `parking_status`:
+- Service role key bypasses RLS and has full access
+- Keep this key secret and only use it server-side
+- Never expose the service role key in client-side code
 
 ## FAQ
 

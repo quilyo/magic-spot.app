@@ -6,7 +6,55 @@
 -- 
 -- Run this SQL in your Supabase SQL Editor
 
--- 1. Create normalized parking_spots table
+-- SECURITY MODEL:
+-- - parking_status: Backend writes raw JSON data. Only authenticated users can read/write.
+-- - parking_spots: Frontend reads normalized data. Public can read, only authenticated can modify.
+-- This ensures public users cannot access raw backend data, only processed parking spots.
+
+-- 1. Create parking_status table (if it doesn't exist)
+-- This table stores raw JSON parking data from the backend
+CREATE TABLE IF NOT EXISTS parking_status (
+  id SERIAL PRIMARY KEY,
+  areas JSONB NOT NULL,
+  timestamp TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable Row Level Security on parking_status
+ALTER TABLE parking_status ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policy: Only authenticated users can read parking_status
+-- Public users should use the normalized parking_spots table instead
+CREATE POLICY "Authenticated users can read parking_status" 
+ON parking_status 
+FOR SELECT 
+TO authenticated
+USING (true);
+
+-- RLS Policy: Only authenticated users can insert parking_status
+-- This allows the backend (using service role or authenticated user) to write data
+CREATE POLICY "Authenticated users can insert parking_status" 
+ON parking_status 
+FOR INSERT 
+TO authenticated
+WITH CHECK (true);
+
+-- RLS Policy: Only authenticated users can update parking_status
+CREATE POLICY "Authenticated users can update parking_status" 
+ON parking_status 
+FOR UPDATE 
+TO authenticated
+USING (true)
+WITH CHECK (true);
+
+-- RLS Policy: Only authenticated users can delete parking_status
+CREATE POLICY "Authenticated users can delete parking_status" 
+ON parking_status 
+FOR DELETE 
+TO authenticated
+USING (true);
+
+-- 2. Create normalized parking_spots table
 CREATE TABLE IF NOT EXISTS parking_spots (
   id TEXT PRIMARY KEY,
   spot_id INTEGER NOT NULL,
@@ -18,15 +66,15 @@ CREATE TABLE IF NOT EXISTS parking_spots (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Create index for faster queries
+-- 3. Create index for faster queries on parking_spots
 CREATE INDEX IF NOT EXISTS idx_parking_spots_occupied ON parking_spots(occupied);
 CREATE INDEX IF NOT EXISTS idx_parking_spots_area ON parking_spots(area);
 CREATE INDEX IF NOT EXISTS idx_parking_spots_spot_id ON parking_spots(spot_id, area);
 
--- 3. Enable Row Level Security
+-- 4. Enable Row Level Security on parking_spots
 ALTER TABLE parking_spots ENABLE ROW LEVEL SECURITY;
 
--- 4. Create RLS Policies
+-- 5. Create RLS Policies for parking_spots
 
 -- Policy: Everyone can view parking spots (no auth required for map)
 CREATE POLICY "Anyone can view spots" 
@@ -42,8 +90,9 @@ TO authenticated
 USING (true)
 WITH CHECK (true);
 
--- 5. Create function to expand JSON and sync parking spots
+-- 6. Create function to expand JSON and sync parking spots
 -- This is a regular function that both the trigger and manual sync can call
+-- SECURITY DEFINER allows the function to bypass RLS when called by triggers
 CREATE OR REPLACE FUNCTION expand_parking_status_to_spots(p_areas JSONB, p_timestamp TIMESTAMPTZ)
 RETURNS void AS $$
 BEGIN
@@ -64,25 +113,27 @@ BEGIN
   FROM jsonb_each(p_areas) AS areas(area_name, area_data)
   CROSS JOIN LATERAL jsonb_array_elements(area_data->'spots') AS spots(spot_obj);
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 6. Create trigger function that calls the sync function
+-- 7. Create trigger function that calls the sync function
+-- SECURITY DEFINER allows the trigger to work even with RLS enabled
 CREATE OR REPLACE FUNCTION sync_parking_spots_on_update()
 RETURNS TRIGGER AS $$
 BEGIN
   PERFORM expand_parking_status_to_spots(NEW.areas, NEW.timestamp);
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 7. Create trigger to sync parking_status changes to parking_spots
+-- 8. Create trigger to sync parking_status changes to parking_spots
 DROP TRIGGER IF EXISTS sync_parking_status_trigger ON parking_status;
 CREATE TRIGGER sync_parking_status_trigger
   AFTER INSERT OR UPDATE ON parking_status
   FOR EACH ROW
   EXECUTE FUNCTION sync_parking_spots_on_update();
 
--- 8. Manual sync function (can be called directly to resync)
+-- 9. Manual sync function (can be called directly to resync)
+-- SECURITY DEFINER allows authorized users to sync without direct access to parking_status
 CREATE OR REPLACE FUNCTION sync_parking_spots_manual()
 RETURNS void AS $$
 DECLARE
@@ -97,9 +148,9 @@ BEGIN
     PERFORM expand_parking_status_to_spots(latest_record.areas, latest_record.timestamp);
   END IF;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 9. Run manual sync to populate from existing data
+-- 10. Run manual sync to populate from existing data
 SELECT sync_parking_spots_manual();
 
 -- ============================================
