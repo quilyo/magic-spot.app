@@ -23,6 +23,14 @@ CREATE TABLE IF NOT EXISTS parking_status (
 -- Enable Row Level Security on parking_status
 ALTER TABLE parking_status ENABLE ROW LEVEL SECURITY;
 
+-- RLS Policy: Only authenticated users can read parking_status
+-- Public users should use the normalized parking_spots table instead
+CREATE POLICY "Authenticated users can read parking_status" 
+ON parking_status 
+FOR SELECT 
+TO authenticated
+USING (true);
+
 -- RLS Policy: Only authenticated users can insert parking_status
 -- This allows the backend (using service role or authenticated user) to write data
 CREATE POLICY "Authenticated users can insert parking_status" 
@@ -38,14 +46,6 @@ FOR UPDATE
 TO authenticated
 USING (true)
 WITH CHECK (true);
-
--- RLS Policy: Only authenticated users can read parking_status
--- Public users should use the normalized parking_spots table instead
-CREATE POLICY "Authenticated users can read parking_status" 
-ON parking_status 
-FOR SELECT 
-TO authenticated
-USING (true);
 
 -- RLS Policy: Only authenticated users can delete parking_status
 CREATE POLICY "Authenticated users can delete parking_status" 

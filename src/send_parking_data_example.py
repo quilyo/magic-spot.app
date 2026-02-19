@@ -92,6 +92,8 @@ def send_parking_data(json_file_path):
         response = requests.post(API_URL, json=payload, headers=headers)
         
         # Check response
+        # Supabase REST API returns 201 for successful inserts with 'Prefer: return=representation'
+        # We also accept 200 for compatibility with different Supabase configurations
         if response.status_code in [200, 201]:
             result = response.json()
             if isinstance(result, list) and len(result) > 0:
