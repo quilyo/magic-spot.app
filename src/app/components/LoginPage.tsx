@@ -206,9 +206,11 @@ export function LoginPage() {
                   className="mt-0.5 flex-shrink-0"
                 />
                 <Label htmlFor="terms" className="text-xs text-gray-600 cursor-pointer leading-relaxed">
-                  I agree to the Terms and Conditions and Privacy Policy of this beta test. 
-                  Parking spots state may not be accurate, this is a work in progress and we're 
-                  happy you're part of it. Your email will be protected and never shared.
+                  I agree to the{' '}
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-medium">
+                    Terms and Conditions
+                  </a>{' '}
+                  and Privacy Policy.
                 </Label>
               </div>
             )}

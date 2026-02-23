@@ -6,6 +6,7 @@ import { LoginPage } from '@/app/components/LoginPage';
 import { ResetPasswordPage } from '@/app/components/ResetPasswordPage';
 import { PricingPage } from '@/app/components/PricingPage';
 import { AdminDashboard } from '@/app/components/AdminDashboard';
+import { TermsPage } from '@/app/components/TermsPage';
 import { ParkingMap } from '@/app/components/ParkingMap';
 import { ParkingData } from '@/app/types/parking';
 import * as api from '@/app/services/api';
@@ -189,8 +190,8 @@ function MapPage() {
                   </button>
                   {isContactOpen && (
                     <div className="ml-3 mt-1 bg-gray-50 rounded-lg p-2">
-                      <a href="mailto:magicspot@5flutesdynamics.com" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-blue-600 hover:bg-white rounded-lg transition-colors">
-                        <Mail className="w-3.5 h-3.5 flex-shrink-0" /><span className="text-xs break-all">magicspot@5flutesdynamics.com</span>
+                      <a href="mailto:mshelp@magic-spot.com" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-blue-600 hover:bg-white rounded-lg transition-colors">
+                        <Mail className="w-3.5 h-3.5 flex-shrink-0" /><span className="text-xs break-all">mshelp@magic-spot.com</span>
                       </a>
                     </div>
                   )}
@@ -277,6 +278,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/terms" element={<TermsPage />} />
           <Route path="/pricing" element={<AuthGate><PricingPage /></AuthGate>} />
           <Route path="/admin" element={<AdminGate><AdminDashboard /></AdminGate>} />
           <Route path="/" element={<SubscriptionGate><MapPage /></SubscriptionGate>} />
