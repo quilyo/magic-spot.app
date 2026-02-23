@@ -128,7 +128,7 @@ function MapPage() {
     : null;
 
   return (
-    <div className="min-h-screen h-screen flex flex-col relative overflow-hidden bg-gray-100">
+    <div className="flex flex-col relative overflow-hidden bg-gray-100" style={{ height: '100dvh', minHeight: '100dvh' }}>
       {/* Full-screen map */}
       <div className="absolute inset-0">
         <ParkingMap

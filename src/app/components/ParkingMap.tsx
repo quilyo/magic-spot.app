@@ -102,8 +102,11 @@ export function ParkingMap({ spots, onSpotClick, availableCount = 0, occupiedCou
 
         leafletMapRef.current = map;
 
-        // Immediate size invalidation
+        // Staggered invalidateSize to ensure map fills container after navigation
         map.invalidateSize();
+        setTimeout(() => map.invalidateSize(), 100);
+        setTimeout(() => map.invalidateSize(), 300);
+        setTimeout(() => map.invalidateSize(), 600);
       } catch (error) {
         console.error('Error initializing map:', error);
       }
@@ -187,7 +190,7 @@ export function ParkingMap({ spots, onSpotClick, availableCount = 0, occupiedCou
     }
   }, [leafletLoaded, resetTrigger, spots]);
 
-  // Handle window resize
+  // Handle window resize + ResizeObserver for container size changes (e.g. after navigation)
   useEffect(() => {
     if (!leafletLoaded || !leafletMapRef.current) return;
 
@@ -201,9 +204,19 @@ export function ParkingMap({ spots, onSpotClick, availableCount = 0, occupiedCou
     handleResize();
     const timeout = setTimeout(handleResize, 200);
 
+    // ResizeObserver: detect container size changes and force Leaflet to recalculate
+    let resizeObserver: ResizeObserver | null = null;
+    if (mapRef.current && typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        handleResize();
+      });
+      resizeObserver.observe(mapRef.current);
+    }
+
     return () => {
       window.removeEventListener('resize', handleResize);
       clearTimeout(timeout);
+      resizeObserver?.disconnect();
     };
   }, [leafletLoaded]);
 
@@ -276,14 +289,14 @@ export function ParkingMap({ spots, onSpotClick, availableCount = 0, occupiedCou
 
   if (!leafletLoaded) {
     return (
-      <div className="w-full h-full rounded-lg overflow-hidden border-2 border-gray-300 shadow-lg relative bg-gray-200 flex items-center justify-center" style={{ minHeight: '500px' }}>
+      <div className={`w-full h-full overflow-hidden relative bg-gray-200 flex items-center justify-center ${isPreviewMode ? 'rounded-lg border-2 border-gray-300 shadow-lg' : ''}`} style={{ minHeight: isPreviewMode ? '500px' : undefined }}>
         <div className="text-gray-600">Loading map...</div>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-full rounded-lg overflow-hidden border-2 border-gray-300 shadow-lg relative" style={{ minHeight: '500px', height: '100%' }}>
+    <div className={`w-full h-full overflow-hidden relative ${isPreviewMode ? 'rounded-lg border-2 border-gray-300 shadow-lg' : ''}`} style={{ minHeight: isPreviewMode ? '500px' : undefined, height: '100%' }}>
       {/* Leaflet Map Container */}
       <div ref={mapRef} className="absolute inset-0" style={{ width: '100%', height: '100%' }} />
 

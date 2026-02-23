@@ -29,6 +29,12 @@
   * {
     @apply border-border;
   }
+  html, body, #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    -webkit-overflow-scrolling: touch;
+  }
   body {
     @apply bg-gray-50 text-foreground;
   }
@@ -41,6 +47,18 @@
   h3 {
     @apply text-lg font-semibold;
   }
+}
+
+/* Ensure Leaflet map tiles render correctly */
+.leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 0;
+}
+
+/* Fix Leaflet tile rendering during transitions */
+.leaflet-tile-pane {
+  will-change: transform;
 }
 
 /* Mapbox overrides */
