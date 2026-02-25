@@ -134,29 +134,39 @@ export function TermsPage() {
               We do not guarantee uninterrupted access to the App. The service may be temporarily unavailable due to maintenance, updates, or circumstances beyond our control.
             </Section>
 
-            <Section title="12. Termination">
+            <Section title="12. Technology & Third-Party Services">
+              <p className="mb-2">The App uses various technologies and third-party services to provide parking detection functionality:</p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>AI-powered parking space detection using computer vision models licensed under Apache 2.0</li>
+                <li>Location services and mapping data from OpenStreetMap and related services</li>
+                <li>Cloud infrastructure and database services from Supabase</li>
+                <li>Various open-source libraries and frameworks as documented in our project attributions</li>
+              </ul>
+            </Section>
+
+            <Section title="13. Termination">
               We reserve the right to suspend or terminate your account at any time, with or without cause, and with or without notice. Upon termination, your right to use the App ceases immediately.
             </Section>
 
-            <Section title="13. Limitation of Liability">
+            <Section title="14. Limitation of Liability">
               <p className="font-semibold text-gray-900 uppercase">
                 To the maximum extent permitted by law, MagicSpot and its developers shall not be liable for any damages arising from your use of or inability to use the App. Total liability shall not exceed the amount paid by you (if any) in the 12 months preceding the claim.
               </p>
             </Section>
 
-            <Section title="14. Indemnification">
+            <Section title="15. Indemnification">
               You agree to indemnify and hold harmless MagicSpot, its developers, and affiliates from any claims, damages, or expenses arising from your use of the App or violation of these Terms.
             </Section>
 
-            <Section title="15. Governing Law">
+            <Section title="16. Governing Law">
               These Terms shall be governed by and construed in accordance with the laws of the United States. Any disputes shall be resolved through binding arbitration.
             </Section>
 
-            <Section title="16. Changes to Terms">
+            <Section title="17. Changes to Terms">
               We may update these Terms at any time. Continued use of the App after changes constitutes acceptance of the updated Terms. Material changes will be communicated via email or in-app notification.
             </Section>
 
-            <Section title="17. Contact">
+            <Section title="18. Contact">
               For questions about these Terms, contact us at:{' '}
               <a href="mailto:mshelp@magic-spot.com" className="text-blue-600 hover:underline font-medium">
                 mshelp@magic-spot.com
