@@ -109,8 +109,13 @@ function MapPage() {
       const { supabase } = await import('@/utils/supabase/client');
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { toast.error('No active session'); return; }
+      
+      // Construct the Supabase URL using the project ID (same as client.tsx)
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const supabaseUrl = `https://${projectId}.supabase.co`;
+      
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/make-server-42996a40/delete-account`,
+        `${supabaseUrl}/functions/v1/make-server-42996a40/delete-account`,
         { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` } }
       );
       if (!response.ok) throw new Error(await response.text());
