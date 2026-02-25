@@ -1,10 +1,18 @@
 # Magic Spot App
 
-Street Parking Monitoring - Full-Stack Solution
+Street Parking Monitoring - Frontend Application
 
-## Components
+## Architecture
 
-This project consists of two main components:
+This repository contains the **frontend application only**. The backend computer vision system is proprietary and runs separately.
+
+```
+┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │◄──►│   Backend API   │
+│   (Open Source) │    │   (Proprietary) │
+│   MIT License   │    │   Private       │
+└─────────────────┘    └─────────────────┘
+```
 
 ### Frontend (React/TypeScript)
 A modern web application for viewing parking availability in real-time.
@@ -15,24 +23,18 @@ npm install
 npm run dev
 ```
 
-### Backend (Python)
-A computer vision system that detects parking space occupancy using AI models and camera feeds.
+### Backend (Python - Not Included)
+The computer vision system that detects parking space occupancy using AI models and camera feeds.
 
-**Setup:**
-```bash
-cd backend
-pip install -r requirements.txt
-python main.py
-```
+**Note:** The backend is proprietary and not included in this open source release. It provides a REST API that the frontend connects to.
 
 ## Features
 
-- **Real-time Parking Detection**: AI-powered computer vision identifies occupied vs available parking spaces
+- **Real-time Parking Detection**: View parking availability from AI-powered computer vision
 - **Interactive Map**: Modern web interface showing parking availability with live updates
-- **Camera Integration**: PTZ camera control and RTSP stream processing
-- **Geofencing**: Polygon-based parking space definitions
-- **Cloud Sync**: Real-time data synchronization with Supabase
-- **Desktop GUI**: Local management interface for camera and detection settings
+- **User Authentication**: Secure login and account management
+- **Subscription Management**: Beta access and future paid tiers
+- **Responsive Design**: Works on desktop and mobile devices
 
 ## Technology Stack
 
@@ -41,20 +43,14 @@ python main.py
 - Vite for build tooling
 - Tailwind CSS + shadcn/ui components
 - Leaflet for mapping
-- Supabase for real-time data
-
-### Backend
-- Python 3.8+
-- OpenCV for computer vision
-- Roboflow for AI model inference
-- ONVIF for camera control
-- CustomTkinter for desktop GUI
-- Supabase for data persistence
+- Supabase for authentication and real-time data
 
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
+**Note:** Only the frontend code is open source. The backend computer vision system is proprietary.
+
 ## Attributions
 
-See [ATTRIBUTIONS.md](ATTRIBUTIONS.md) for a complete list of third-party libraries and their licenses.
+See [ATTRIBUTIONS.md](ATTRIBUTIONS.md) for a complete list of third-party libraries used in the frontend.

@@ -72,8 +72,6 @@ This application uses computer vision models from **[Roboflow](https://roboflow.
 
 This project is licensed under the MIT License. All third-party dependencies are used in accordance with their respective licenses. The Apache 2.0 licensed components (Roboflow, Supabase, OpenCV, TypeScript) require attribution, which is provided above.
 
-## Backend License
-
-The Python backend component is also licensed under the MIT License and includes all necessary third-party attributions as listed above.
+**Note:** This repository contains only the frontend application. The backend computer vision system is proprietary and not included in this open source release.
 
 For questions about licensing or attributions, please contact: mshelp@magic-spot.com

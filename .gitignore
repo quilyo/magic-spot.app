@@ -15,6 +15,9 @@ dist/
 .env.production
 .env.development
 
+# Backend (proprietary - not open source)
+backend/
+
 # Keep example files
 !.env.example
 !.env.*.example
