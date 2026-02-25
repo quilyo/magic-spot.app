@@ -33,15 +33,27 @@ This application uses computer vision models from **[Roboflow](https://roboflow.
 - **Usage**: Models are used for real-time parking space occupancy detection
 - **License Text**: Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
 
-## Media Assets
+## Python Backend Dependencies
 
-### Images
-- **[Unsplash](https://unsplash.com)** - Images used under Unsplash license terms
-- **Figma Assets** - UI mockups and design assets from Figma Make framework
+### Computer Vision & Image Processing
+- **[OpenCV](https://opencv.org/)** - Apache 2.0 License
+- **[Pillow (PIL)](https://python-pillow.org/)** - HPND License (Historical Permission Notice and Disclaimer)
+- **[NumPy](https://numpy.org/)** - BSD 3-Clause License
 
-## Development Tools
+### Networking & APIs
+- **[Requests](https://requests.readthedocs.io/)** - Apache 2.0 License
+- **[python-dotenv](https://github.com/theskumar/python-dotenv)** - BSD 3-Clause License
 
-### Build Tools
+### Geometry & Spatial Operations
+- **[Shapely](https://shapely.readthedocs.io/)** - BSD 3-Clause License
+
+### Camera Control
+- **[ONVIF Zeep](https://github.com/FalkTannhaeuser/python-onvif-zeep)** - MIT License
+
+### GUI Framework
+- **[CustomTkinter](https://github.com/TomSchimansky/CustomTkinter)** - MIT License
+
+### Development Tools
 - **[TypeScript](https://www.typescriptlang.org/)** - Apache 2.0 License
 - **[ESLint](https://eslint.org/)** - MIT License
 - **[PostCSS](https://postcss.org/)** - MIT License
@@ -58,6 +70,10 @@ This application uses computer vision models from **[Roboflow](https://roboflow.
 
 ## License Compliance
 
-This project is licensed under the MIT License. All third-party dependencies are used in accordance with their respective licenses. The Apache 2.0 licensed components (Roboflow, Supabase, TypeScript) require attribution, which is provided above.
+This project is licensed under the MIT License. All third-party dependencies are used in accordance with their respective licenses. The Apache 2.0 licensed components (Roboflow, Supabase, OpenCV, TypeScript) require attribution, which is provided above.
+
+## Backend License
+
+The Python backend component is also licensed under the MIT License and includes all necessary third-party attributions as listed above.
 
 For questions about licensing or attributions, please contact: mshelp@magic-spot.com
