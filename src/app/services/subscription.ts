@@ -7,29 +7,31 @@ import { BETA_EXPIRY_DATE } from '@/app/types/subscription';
  * Beta subscriptions are free and expire at BETA_EXPIRY_DATE.
  */
 export async function activateBetaSubscription(userId: string): Promise<Subscription> {
-  // Check if user already has an active subscription
+  // Check if user already has an active non-expired subscription
+  const now = new Date().toISOString();
   const { data: existing } = await supabase
     .from('subscriptions')
     .select('*')
     .eq('user_id', userId)
     .eq('status', 'active')
+    .or('expires_at.is.null,expires_at.gt.' + now)
     .maybeSingle();
 
   if (existing) {
     throw new Error('You already have an active subscription');
   }
 
-  const now = new Date().toISOString();
+  const nowTime = new Date().toISOString();
   const { data, error } = await supabase
     .from('subscriptions')
     .insert({
       user_id: userId,
       tier: 'beta',
       status: 'active',
-      starts_at: now,
+      starts_at: nowTime,
       expires_at: BETA_EXPIRY_DATE,
-      created_at: now,
-      updated_at: now,
+      created_at: nowTime,
+      updated_at: nowTime,
     })
     .select()
     .single();

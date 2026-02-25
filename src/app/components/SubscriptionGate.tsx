@@ -15,6 +15,8 @@ interface SubscriptionGateProps {
 export function SubscriptionGate({ children }: SubscriptionGateProps) {
   const { isAuthenticated, loading, hasActiveSubscription, isAdmin } = useAuth();
 
+  console.log('SubscriptionGate: loading', loading, 'isAuthenticated', isAuthenticated, 'hasActiveSubscription', hasActiveSubscription, 'isAdmin', isAdmin);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">

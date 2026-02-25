@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/app/hooks/useAuth';
 import { activateBetaSubscription } from '@/app/services/subscription';
@@ -15,21 +15,34 @@ import {
 } from 'lucide-react';
 
 export function PricingPage() {
-  const { user, hasActiveSubscription, subscriptionTier, refreshProfile } = useAuth();
+  const { user, hasActiveSubscription, subscriptionTier, refreshProfile, loading: authLoading } = useAuth();
   const [activating, setActivating] = useState(false);
   const navigate = useNavigate();
+
+  // Redirect to map if already subscribed
+  useEffect(() => {
+    if (hasActiveSubscription && !authLoading) {
+      navigate('/', { replace: true });
+    }
+  }, [hasActiveSubscription, authLoading, navigate]);
 
   const handleActivateBeta = async () => {
     if (!user) return;
     setActivating(true);
     try {
       await activateBetaSubscription(user.id);
-      const updatedProfile = await refreshProfile();
+      // Wait a bit for the database to commit
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await refreshProfile();
       toast.success('Beta access activated! Welcome aboard.');
-      // Small delay to let React state propagate before navigation
-      await new Promise(resolve => setTimeout(resolve, 100));
       navigate('/', { replace: true });
     } catch (error: any) {
+      // If user already has a subscription, refresh and go to map
+      if (error.message?.includes('already have an active subscription')) {
+        await refreshProfile();
+        navigate('/', { replace: true });
+        return;
+      }
       toast.error(error.message || 'Failed to activate beta');
     } finally {
       setActivating(false);
@@ -47,33 +60,16 @@ export function PricingPage() {
     year: 'numeric',
   });
 
+  // If the user already has an active subscription, send them straight to the map
+  useEffect(() => {
+    if (hasActiveSubscription) {
+      navigate('/', { replace: true });
+    }
+  }, [hasActiveSubscription, navigate]);
+
+  // Don't render the pricing page while redirecting
   if (hasActiveSubscription) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full">
-          <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/60 p-8 text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Check className="w-8 h-8 text-green-600" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">You're All Set!</h2>
-            <p className="text-gray-600 mb-2">
-              Your <span className="font-semibold capitalize">{subscriptionTier}</span> subscription is active.
-            </p>
-            {subscriptionTier === 'beta' && (
-              <p className="text-sm text-amber-600 mb-6">
-                Beta access expires {betaExpiryFormatted}
-              </p>
-            )}
-            <Button
-              onClick={() => navigate('/')}
-              className="bg-gray-900 text-white hover:bg-gray-800 rounded-xl px-6 py-3"
-            >
-              Go to Map <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (

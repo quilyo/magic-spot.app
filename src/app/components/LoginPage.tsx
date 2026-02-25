@@ -21,15 +21,20 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [isSignup, setIsSignup] = useState(false);
 
-  const { login, signup, isAuthenticated } = useAuth();
+  const { login, signup, isAuthenticated, hasActiveSubscription, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect if already authenticated
+  // Redirect if user arrives at /login while already authenticated
+  // (e.g. page refresh with existing session, back-button, direct URL)
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/');
+    if (isAuthenticated && !authLoading) {
+      if (hasActiveSubscription) {
+        navigate('/', { replace: true });
+      } else {
+        navigate('/pricing', { replace: true });
+      }
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, authLoading, hasActiveSubscription, navigate]);
 
   // Load remembered email
   useEffect(() => {
@@ -86,10 +91,20 @@ export function LoginPage() {
           localStorage.removeItem(REMEMBERED_EMAIL_KEY);
           localStorage.removeItem(KEEP_LOGGED_IN_KEY);
         }
-        await login(email, password);
+        const profile = await login(email, password);
         toast.success('Signed in successfully');
+        // Navigate based on returned profile data (not React state)
+        // to avoid race condition where state hasn't committed yet.
+        const sub = profile.subscription;
+        const isSubActive = !!sub && sub.status === 'active' &&
+          (!sub.expires_at || new Date(sub.expires_at) > new Date());
+        if (isSubActive || profile.role === 'admin') {
+          navigate('/', { replace: true });
+        } else {
+          navigate('/pricing', { replace: true });
+        }
+        return; // skip finally's setLoading
       }
-      navigate('/');
     } catch (error: any) {
       toast.error(error.message || `${isSignup ? 'Signup' : 'Login'} failed`);
     } finally {

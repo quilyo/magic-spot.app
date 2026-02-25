@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { flushSync } from 'react-dom';
 import { supabase } from '@/utils/supabase/client';
 import type { UserProfile, Subscription, SubscriptionTier } from '@/app/types/subscription';
 
@@ -9,7 +10,7 @@ interface AuthContextType {
   isAdmin: boolean;
   hasActiveSubscription: boolean;
   subscriptionTier: SubscriptionTier;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<UserProfile>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -62,7 +63,7 @@ async function fetchUserProfile(userId: string, email: string, name: string): Pr
       console.error('[Auth] Error fetching subscriptions:', subError.message, subError.code, subError.hint);
     } else if (subData && subData.length > 0) {
       sub = subData.find((s: any) => s.status === 'active') || subData[0];
-      console.log('[Auth] Subscription found:', sub?.tier, sub?.status);
+      console.log('[Auth] Subscription found:', sub?.tier, sub?.status, 'expires:', sub?.expires_at);
     } else {
       console.log('[Auth] No subscriptions found');
     }
@@ -130,7 +131,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session.user.email!,
         session.user.user_metadata?.name || ''
       );
-      setUser(profile);
+      // flushSync ensures the state is committed synchronously so callers
+      // can navigate immediately and components see the updated profile.
+      flushSync(() => setUser(profile));
       return profile;
     }
     return null;
@@ -163,15 +166,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    // Safety net: force loading=false after 8s no matter what
-    const safetyTimeout = setTimeout(() => {
+    // Safety net: force loading=false after 20s no matter what
+    let safetyTimeoutId = setTimeout(() => {
       if (isMounted) {
         console.warn('[Auth] Safety timeout reached - forcing load complete');
         setLoading(false);
       }
     }, 20000);
 
-    checkSession();
+    checkSession().then(() => {
+      // Cancel safety timeout once checkSession finishes,
+      // so it can't interfere with login()'s loading state later.
+      clearTimeout(safetyTimeoutId);
+    });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[Auth] Auth state changed:', event);
@@ -184,37 +191,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       isMounted = false;
-      clearTimeout(safetyTimeout);
+      clearTimeout(safetyTimeoutId);
       subscription.unsubscribe();
     };
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<UserProfile> => {
     console.log('[Auth] Logging in...');
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw new Error(error.message);
-    if (!data.user) throw new Error('No user data returned');
-    console.log('[Auth] Sign in successful, user:', data.user.id);
+    setLoading(true); // Prevent SubscriptionGate from redirecting to /pricing mid-login
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw new Error(error.message);
+      if (!data.user) throw new Error('No user data returned');
+      console.log('[Auth] Sign in successful, user:', data.user.id);
 
-    // Set a minimal user immediately so the app can navigate.
-    // The full profile (with subscription/role) will be loaded 
-    // by onAuthStateChange or refreshProfile.
-    setUser({
-      id: data.user.id,
-      email: data.user.email!,
-      name: data.user.user_metadata?.name || '',
-      role: 'user',
-      subscription: null,
-      created_at: new Date().toISOString(),
-    });
-
-    // Kick off background profile fetch (non-blocking)
-    fetchUserProfile(data.user.id, data.user.email!, data.user.user_metadata?.name || '')
-      .then(profile => {
-        console.log('[Auth] Background profile loaded:', profile.role, profile.subscription?.tier);
+      // Fetch the full profile (with subscription/role) before setting user.
+      let profile: UserProfile;
+      try {
+        profile = await fetchUserProfile(data.user.id, data.user.email!, data.user.user_metadata?.name || '');
+        console.log('[Auth] Profile loaded on login:', profile.role, 'sub:', profile.subscription?.tier, profile.subscription?.status);
+      } catch (err) {
+        console.error('[Auth] Profile fetch on login failed, using minimal user:', err);
+        profile = {
+          id: data.user.id,
+          email: data.user.email!,
+          name: data.user.user_metadata?.name || '',
+          role: 'user',
+          subscription: null,
+          created_at: new Date().toISOString(),
+        };
+      }
+      // flushSync commits both updates synchronously so that
+      // when the caller navigates, SubscriptionGate sees the real state.
+      flushSync(() => {
         setUser(profile);
-      })
-      .catch(err => console.error('[Auth] Background profile fetch failed:', err));
+        setLoading(false);
+      });
+      return profile;
+    } catch (err) {
+      setLoading(false);
+      throw err;
+    }
   };
 
   const signup = async (email: string, password: string, name: string) => {

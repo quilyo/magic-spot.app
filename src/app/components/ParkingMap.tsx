@@ -69,6 +69,8 @@ export function ParkingMap({ spots, onSpotClick, availableCount = 0, occupiedCou
     const L = (window as any).L;
     if (!L) return;
 
+    console.log('ParkingMap: Initializing map with', spots.length, 'spots');
+
     // Calculate initial center
     const avgLat = spots.length > 0 
       ? spots.reduce((sum, spot) => sum + spot.lat, 0) / spots.length 
@@ -217,6 +219,11 @@ export function ParkingMap({ spots, onSpotClick, availableCount = 0, occupiedCou
       window.removeEventListener('resize', handleResize);
       clearTimeout(timeout);
       resizeObserver?.disconnect();
+      // Clean up map on unmount
+      if (leafletMapRef.current) {
+        leafletMapRef.current.remove();
+        leafletMapRef.current = null;
+      }
     };
   }, [leafletLoaded]);
 
