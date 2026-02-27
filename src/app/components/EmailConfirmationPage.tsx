@@ -1,28 +1,43 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/app/components/ui/button';
 import { toast } from 'sonner';
-import { MapPin, Mail, CheckCircle, AlertCircle } from 'lucide-react';
+import { MapPin, Mail, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { supabase } from '@/utils/supabase/client';
 
 export function EmailConfirmationPage() {
   const [loading, setLoading] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
+
+  // Email passed from signup navigate state
+  const email = (location.state as any)?.email || '';
 
   useEffect(() => {
-    // Check if we have confirmation tokens in URL
-    const accessToken = searchParams.get('access_token');
-    const refreshToken = searchParams.get('refresh_token');
-    const type = searchParams.get('type');
+    // Supabase puts tokens in the URL hash: #access_token=...&refresh_token=...&type=signup
+    const hash = window.location.hash;
+    if (!hash) return;
+
+    const params = new URLSearchParams(hash.substring(1)); // strip the '#'
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+    const type = params.get('type');
 
     if (type === 'signup' && accessToken && refreshToken) {
-      // Handle email confirmation
       handleEmailConfirmation(accessToken, refreshToken);
     }
-  }, [searchParams]);
+  }, []);
+
+  // Countdown timer for resend button
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
 
   const handleEmailConfirmation = async (accessToken: string, refreshToken: string) => {
     setLoading(true);
@@ -36,12 +51,10 @@ export function EmailConfirmationPage() {
 
       if (data.user) {
         setConfirmed(true);
-        toast.success('Email confirmed successfully!');
-
-        // Redirect to login or directly to app after a delay
-        setTimeout(() => {
-          navigate('/login', { replace: true });
-        }, 2000);
+        // Clear the hash from the URL so tokens aren't exposed
+        window.history.replaceState(null, '', window.location.pathname);
+        toast.success('Email confirmed! You can now sign in.');
+        setTimeout(() => navigate('/login', { replace: true }), 2500);
       }
     } catch (err: any) {
       console.error('Email confirmation error:', err);
@@ -53,9 +66,37 @@ export function EmailConfirmationPage() {
   };
 
   const resendConfirmation = async () => {
-    // This would need the user's email - for now, just show a message
-    toast.info('Please check your email for the confirmation link. If you didn\'t receive it, try signing up again.');
+    if (!email) {
+      toast.info("Please go back and sign up again to receive a new confirmation email.");
+      return;
+    }
+    setResendLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/email-confirmation` },
+      });
+      if (error) throw error;
+      toast.success('Confirmation email sent! Check your inbox.');
+      setResendCooldown(60);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to resend confirmation email');
+    } finally {
+      setResendLoading(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <Loader2 className="w-10 h-10 text-blue-500 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 font-medium">Confirming your email...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (confirmed) {
     return (
@@ -157,10 +198,12 @@ export function EmailConfirmationPage() {
           <div className="mb-6">
             <Mail className="w-16 h-16 text-blue-500 mx-auto mb-4" />
             <p className="text-gray-600 mb-4">
-              We've sent a confirmation link to your email address. Click the link to activate your account.
+              We've sent a confirmation link to{' '}
+              {email ? <strong>{email}</strong> : 'your email address'}.
+              Click the link to activate your account.
             </p>
             <p className="text-sm text-gray-500">
-              Don't see the email? Check your spam folder or try signing up again.
+              Don't see the email? Check your spam folder.
             </p>
           </div>
 
@@ -169,9 +212,15 @@ export function EmailConfirmationPage() {
               onClick={resendConfirmation}
               variant="outline"
               className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2 px-4 rounded-xl"
-              disabled={loading}
+              disabled={resendLoading || resendCooldown > 0}
             >
-              {loading ? 'Sending...' : 'Resend Confirmation'}
+              {resendLoading ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Sending...</>
+              ) : resendCooldown > 0 ? (
+                `Resend in ${resendCooldown}s`
+              ) : (
+                'Resend Confirmation Email'
+              )}
             </Button>
             <Button
               onClick={() => navigate('/login')}

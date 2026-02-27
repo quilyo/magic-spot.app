@@ -82,7 +82,8 @@ export function LoginPage() {
     try {
       if (isSignup) {
         await signup(email, password, name);
-        toast.success(`Welcome, ${name}!`);
+        navigate('/email-confirmation', { state: { email }, replace: true });
+        return;
       } else {
         if (rememberMe) {
           localStorage.setItem(REMEMBERED_EMAIL_KEY, email);

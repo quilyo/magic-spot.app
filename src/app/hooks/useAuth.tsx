@@ -239,7 +239,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { name } },
+      options: {
+        data: { name },
+        emailRedirectTo: `${window.location.origin}/email-confirmation`,
+      },
     });
     if (error) throw new Error(error.message);
     if (!data.user) throw new Error('No user data returned');

@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from '@/app/hooks/useAuth';
 import { SubscriptionGate, AuthGate, AdminGate } from '@/app/components/SubscriptionGate';
 import { LoginPage } from '@/app/components/LoginPage';
 import { ResetPasswordPage } from '@/app/components/ResetPasswordPage';
+import { EmailConfirmationPage } from '@/app/components/EmailConfirmationPage';
 import { PricingPage } from '@/app/components/PricingPage';
 import { AdminDashboard } from '@/app/components/AdminDashboard';
 import { TermsPage } from '@/app/components/TermsPage';
@@ -282,6 +283,7 @@ export default function App() {
         <Toaster position="top-center" toastOptions={{ className: 'rounded-xl' }} />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/email-confirmation" element={<EmailConfirmationPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/pricing" element={<AuthGate><PricingPage /></AuthGate>} />
