@@ -71,12 +71,13 @@ export function ParkingMap({ spots, onSpotClick, availableCount = 0, occupiedCou
 
     console.log('ParkingMap: Initializing map with', spots.length, 'spots');
 
-    // Calculate initial center
-    const avgLat = spots.length > 0 
-      ? spots.reduce((sum, spot) => sum + spot.lat, 0) / spots.length 
+    // Calculate initial center, ignoring any spots with invalid (0,0) coordinates
+    const validSpots = spots.filter(s => s.lat !== 0 && s.lon !== 0);
+    const avgLat = validSpots.length > 0 
+      ? validSpots.reduce((sum, spot) => sum + spot.lat, 0) / validSpots.length 
       : 40.7923;
-    const avgLon = spots.length > 0 
-      ? spots.reduce((sum, spot) => sum + spot.lon, 0) / spots.length 
+    const avgLon = validSpots.length > 0 
+      ? validSpots.reduce((sum, spot) => sum + spot.lon, 0) / validSpots.length 
       : -73.9369;
 
     setTimeout(() => {
@@ -180,16 +181,19 @@ export function ParkingMap({ spots, onSpotClick, availableCount = 0, occupiedCou
     });
   }, [leafletLoaded, spots, onSpotClick]);
 
-  // Handle reset trigger
+  // Handle reset trigger - center map on valid parking spots
   useEffect(() => {
-    if (!leafletLoaded) return;
-    
-    if (resetTrigger > 0 && leafletMapRef.current && spots.length > 0) {
-      const avgLat = spots.reduce((sum, spot) => sum + spot.lat, 0) / spots.length;
-      const avgLon = spots.reduce((sum, spot) => sum + spot.lon, 0) / spots.length;
-      
-      leafletMapRef.current.setView([avgLat, avgLon], 19);
-    }
+    if (!leafletLoaded || resetTrigger === 0 || !leafletMapRef.current) return;
+
+    const L = (window as any).L;
+    if (!L) return;
+
+    // Filter out any spots with invalid (0,0) coordinates
+    const validSpots = spots.filter(s => s.lat !== 0 && s.lon !== 0);
+    if (validSpots.length === 0) return;
+
+    const bounds = L.latLngBounds(validSpots.map(s => [s.lat, s.lon]));
+    leafletMapRef.current.fitBounds(bounds, { padding: [40, 40], animate: true, maxZoom: 20 });
   }, [leafletLoaded, resetTrigger, spots]);
 
   // Handle window resize + ResizeObserver for container size changes (e.g. after navigation)
@@ -246,6 +250,7 @@ export function ParkingMap({ spots, onSpotClick, availableCount = 0, occupiedCou
       console.log("Displaying user location on map:", userLocation);
 
       // Create a pulsing blue circle marker for user location
+      // interactive: false so clicks pass through to parking spot markers underneath
       const userMarker = L.circleMarker([userLocation.lat, userLocation.lon], {
         radius: 12,
         fillColor: '#3b82f6',
@@ -253,6 +258,7 @@ export function ParkingMap({ spots, onSpotClick, availableCount = 0, occupiedCou
         weight: 3,
         opacity: 1,
         fillOpacity: 0.7,
+        interactive: false,
       });
 
       // Add a pulsing animation effect with an accuracy circle
@@ -263,6 +269,7 @@ export function ParkingMap({ spots, onSpotClick, availableCount = 0, occupiedCou
         weight: 1,
         opacity: 0.2,
         fillOpacity: 0.1,
+        interactive: false,
       });
 
       userMarker.bindPopup(`
