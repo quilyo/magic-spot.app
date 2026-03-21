@@ -56,10 +56,8 @@ export function ParkingMap({ spots, onSpotClick, availableCount = 0, occupiedCou
     };
     document.head.appendChild(script);
 
-    return () => {
-      document.head.removeChild(link);
-      document.head.removeChild(script);
-    };
+    // Do NOT remove Leaflet CSS/JS on unmount — they are global and must persist
+    // so that navigating back to the map doesn't lose styles or window.L
   }, []);
 
   // Initialize map
@@ -80,8 +78,16 @@ export function ParkingMap({ spots, onSpotClick, availableCount = 0, occupiedCou
       ? validSpots.reduce((sum, spot) => sum + spot.lon, 0) / validSpots.length 
       : -73.9369;
 
-    setTimeout(() => {
+    const tryInitMap = (attempts = 0) => {
       if (!mapRef.current || leafletMapRef.current) return;
+
+      // Wait until the container has real dimensions before initializing Leaflet.
+      // This fixes the blank map on first load and after navigation (e.g. returning from admin page).
+      const { width, height } = mapRef.current.getBoundingClientRect();
+      if ((width === 0 || height === 0) && attempts < 30) {
+        setTimeout(() => tryInitMap(attempts + 1), 100);
+        return;
+      }
 
       try {
         const map = L.map(mapRef.current, {
@@ -105,15 +111,16 @@ export function ParkingMap({ spots, onSpotClick, availableCount = 0, occupiedCou
 
         leafletMapRef.current = map;
 
-        // Staggered invalidateSize to ensure map fills container after navigation
+        // Force Leaflet to recalculate the container size after mount
         map.invalidateSize();
-        setTimeout(() => map.invalidateSize(), 100);
-        setTimeout(() => map.invalidateSize(), 300);
-        setTimeout(() => map.invalidateSize(), 600);
+        setTimeout(() => map.invalidateSize(), 150);
+        setTimeout(() => map.invalidateSize(), 400);
       } catch (error) {
         console.error('Error initializing map:', error);
       }
-    }, 50);
+    };
+
+    tryInitMap();
 
     return () => {
       if (leafletMapRef.current) {
