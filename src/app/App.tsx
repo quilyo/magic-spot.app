@@ -96,11 +96,11 @@ function MapPage() {
   const handleLogout = async () => {
     try {
       await logout();
-      toast.success('Logged out successfully');
-      navigate('/login');
     } catch {
-      toast.error('Logout failed');
+      // ignore — logout clears local state regardless
     }
+    toast.success('Logged out successfully');
+    navigate('/login');
   };
 
   const handleDeleteAccount = async () => {

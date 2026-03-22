@@ -263,9 +263,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    // Always clear local state first so the user is signed out in the UI
+    // even if the Supabase API call fails (e.g. 403 from an expired token).
     setUser(null);
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // Session was already invalid — local state is cleared, nothing more to do.
+    }
   };
 
   const resetPassword = async (email: string) => {
