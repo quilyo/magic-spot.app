@@ -39,6 +39,7 @@ function MapPage() {
 
   const [parkingData, setParkingData] = useState<ParkingData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [mapResetTrigger, setMapResetTrigger] = useState(0);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
@@ -52,6 +53,7 @@ function MapPage() {
     try {
       const data = await api.fetchParkingData();
       setParkingData(data);
+      setLastUpdated(new Date(data.timestamp));
     } catch (error) {
       console.error("Failed to fetch parking data:", error);
       toast.error('Failed to load parking data');
@@ -226,6 +228,19 @@ function MapPage() {
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             <span className="ml-2 hidden sm:inline">{loading ? 'Updating...' : 'Refresh'}</span>
           </Button>
+          {lastUpdated && (
+            <span className="text-xs text-gray-900 bg-white/90 backdrop-blur-xl px-2.5 py-1 rounded-xl shadow-lg border border-white/60 leading-tight text-right">
+              {loading ? 'Updating…' : (
+                <>
+                  Last Update{' '}
+                  {lastUpdated.toDateString() === new Date().toDateString()
+                    ? lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : lastUpdated.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' +
+                      lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </>
+              )}
+            </span>
+          )}
           <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-lg p-3 border border-white/60">
             <div className="space-y-2">
               <div className="flex items-center gap-2">

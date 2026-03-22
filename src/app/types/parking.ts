@@ -5,7 +5,8 @@ export interface ParkingSpot {
   lon: number;
   name?: string;
   area?: string; // Area name that the spot belongs to
-  timestamp?: string; // When the spot status last changed
+  timestamp?: string; // Detection batch timestamp sent by backend
+  updated_at?: string; // When Supabase last wrote this row (most reliable for data freshness)
 }
 
 export interface ParkingData {

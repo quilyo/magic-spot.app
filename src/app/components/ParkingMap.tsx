@@ -335,43 +335,30 @@ export function ParkingMap({ spots, onSpotClick, availableCount = 0, occupiedCou
               <X className="w-4 h-4" />
             </button>
           </div>
-          <div
-            className={`text-sm font-medium mb-3 ${
-              selectedSpot.occupied === 1 ? 'text-red-600' : 'text-gray-900'
-            }`}
-          >
+          <div className="text-sm font-medium mb-3">
             {selectedSpot.occupied === 1 ? (
               <span className="text-red-600">🔴 Occupied</span>
-            ) : (() => {
-              if (selectedSpot.timestamp) {
-                const now = new Date().getTime();
-                const spotTime = new Date(selectedSpot.timestamp).getTime();
-                const minutesAvailable = Math.floor((now - spotTime) / (1000 * 60));
-                
-                if (minutesAvailable >= 5) {
-                  return (
-                    <>
-                      <span className="text-green-600">🟢 Available</span>{' '}
-                      <span className="text-gray-900">+5 minutes ago</span>
-                    </>
-                  );
-                } else if (minutesAvailable > 0) {
-                  return (
-                    <>
-                      <span className="text-green-600">🟢 Available</span>{' '}
-                      <span className="text-gray-900">{minutesAvailable} minute{minutesAvailable === 1 ? '' : 's'}</span>
-                    </>
-                  );
-                } else {
-                  return (
-                    <>
-                      <span className="text-green-600">🟢 Available</span>{' '}
-                      <span className="text-gray-900">&lt;1 minute</span>
-                    </>
-                  );
-                }
-              }
-              return <span className="text-green-600">🟢 Available</span>;
+            ) : (
+              <span className="text-green-600">🟢 Available</span>
+            )}
+            {(() => {
+              const checkTime = selectedSpot.updated_at || selectedSpot.timestamp;
+              if (!checkTime) return null;
+              const now = Date.now();
+              const t = new Date(checkTime).getTime();
+              const mins = Math.floor((now - t) / 60000);
+              const label = mins < 1
+                ? 'just now'
+                : mins === 1
+                ? '1 min ago'
+                : mins < 60
+                ? `${mins} min ago`
+                : mins < 120
+                ? '1 hr ago'
+                : `${Math.floor(mins / 60)} hrs ago`;
+              return (
+                <span className="text-xs text-gray-500 font-normal ml-2">checked {label}</span>
+              );
             })()}
           </div>
           <Button

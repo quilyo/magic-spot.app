@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/app/hooks/useAuth';
 import { Button } from '@/app/components/ui/button';
@@ -23,6 +23,58 @@ export function LoginPage() {
 
   const { login, signup, isAuthenticated, hasActiveSubscription, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const mapBgRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any>(null);
+
+  // Load a decorative blurred Leaflet map in the background
+  useEffect(() => {
+    const tryInit = () => {
+      const L = (window as any).L;
+      if (!L || !mapBgRef.current || mapInstanceRef.current) return;
+      mapInstanceRef.current = L.map(mapBgRef.current, {
+        center: [40.7923, -73.9369],
+        zoom: 17,
+        zoomControl: false,
+        scrollWheelZoom: false,
+        dragging: false,
+        touchZoom: false,
+        doubleClickZoom: false,
+        keyboard: false,
+        attributionControl: false,
+      });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 20,
+      }).addTo(mapInstanceRef.current);
+    };
+
+    if ((window as any).L) {
+      tryInit();
+    } else {
+      if (!document.querySelector('link[href*="leaflet.css"]')) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
+        link.crossOrigin = '';
+        document.head.appendChild(link);
+      }
+      if (!document.querySelector('script[src*="leaflet.js"]')) {
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
+        script.crossOrigin = '';
+        script.onload = tryInit;
+        document.head.appendChild(script);
+      }
+    }
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
 
   // Redirect if user arrives at /login while already authenticated
   // (e.g. page refresh with existing session, back-button, direct URL)
@@ -114,9 +166,18 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/60 p-8">
+    <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
+      {/* Blurred map background */}
+      <div
+        className="absolute inset-0"
+        style={{ filter: 'blur(6px)', transform: 'scale(1.08)' }}
+      >
+        <div ref={mapBgRef} style={{ width: '100%', height: '100%' }} />
+      </div>
+      {/* Dark overlay */}
+      <div className="absolute inset-0 bg-black/50" />
+      <div className="relative z-10 w-full max-w-md">
+        <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/60 p-8">
           {/* Logo */}
           <div className="flex items-center justify-center gap-2 mb-6">
             <div className="w-10 h-10 bg-gray-900 rounded-xl flex items-center justify-center">

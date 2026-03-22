@@ -19,13 +19,23 @@ export const fetchParkingData = async (): Promise<ParkingData> => {
       name: spot.name || `${spot.area} Spot ${spot.spot_id}`,
       area: spot.area,
       timestamp: spot.timestamp,
+      updated_at: spot.updated_at,
     }));
 
     const occupiedCount = parkingSpots.filter(s => s.occupied === 1).length;
     const availableCount = parkingSpots.filter(s => s.occupied === 0).length;
 
+    // Use updated_at (set by Supabase trigger on every backend write) as the
+    // authoritative "last data push" time. Falls back to spot.timestamp if needed.
+    const latestWriteTime = parkingSpots
+      .map(s => s.updated_at ? new Date(s.updated_at).getTime() : (s.timestamp ? new Date(s.timestamp).getTime() : 0))
+      .reduce((max, t) => (t > max ? t : max), 0);
+    const dataTimestamp = latestWriteTime > 0
+      ? new Date(latestWriteTime).toISOString()
+      : new Date().toISOString();
+
     return {
-      timestamp: new Date().toISOString(),
+      timestamp: dataTimestamp,
       total_spots: parkingSpots.length,
       occupied_count: occupiedCount,
       available_count: availableCount,
