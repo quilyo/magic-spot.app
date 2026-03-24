@@ -28,7 +28,9 @@ export function useAuth() {
   return context;
 }
 
-async function fetchUserProfile(userId: string, email: string, name: string): Promise<UserProfile> {
+async function fetchUserProfile(userId: string, email: string | undefined, name: string, phone?: string): Promise<UserProfile> {
+  // Phone users have no email — use a placeholder so the NOT NULL column doesn't break
+  const resolvedEmail = email || (phone ? `phone_${phone.replace(/\D/g, '')}@phone.auth` : '');
   let profile: any = null;
   let sub: any = null;
 
@@ -74,7 +76,7 @@ async function fetchUserProfile(userId: string, email: string, name: string): Pr
   if (profile) {
     return {
       id: profile.id,
-      email: profile.email,
+      email: profile.email || resolvedEmail,
       name: profile.name,
       role: profile.role || 'user',
       subscription: sub ? {
@@ -98,7 +100,7 @@ async function fetchUserProfile(userId: string, email: string, name: string): Pr
     .from('user_profiles')
     .insert({
       id: userId,
-      email,
+      email: resolvedEmail,
       name,
       role: 'user',
     })
@@ -111,7 +113,7 @@ async function fetchUserProfile(userId: string, email: string, name: string): Pr
 
   return {
     id: userId,
-    email,
+    email: resolvedEmail,
     name,
     role: 'user',
     subscription: null,
@@ -128,8 +130,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (session?.user) {
       const profile = await fetchUserProfile(
         session.user.id,
-        session.user.email!,
-        session.user.user_metadata?.name || ''
+        session.user.email,
+        session.user.user_metadata?.name || '',
+        session.user.phone
       );
       // flushSync ensures the state is committed synchronously so callers
       // can navigate immediately and components see the updated profile.
@@ -150,8 +153,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user && isMounted) {
           const profile = await fetchUserProfile(
             session.user.id,
-            session.user.email!,
-            session.user.user_metadata?.name || ''
+            session.user.email,
+            session.user.user_metadata?.name || '',
+            session.user.phone
           );
           if (isMounted) setUser(profile);
           console.log('[Auth] User loaded:', profile.email, 'role:', profile.role);
@@ -208,13 +212,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Fetch the full profile (with subscription/role) before setting user.
       let profile: UserProfile;
       try {
-        profile = await fetchUserProfile(data.user.id, data.user.email!, data.user.user_metadata?.name || '');
+        profile = await fetchUserProfile(data.user.id, data.user.email, data.user.user_metadata?.name || '', data.user.phone);
         console.log('[Auth] Profile loaded on login:', profile.role, 'sub:', profile.subscription?.tier, profile.subscription?.status);
       } catch (err) {
         console.error('[Auth] Profile fetch on login failed, using minimal user:', err);
         profile = {
           id: data.user.id,
-          email: data.user.email!,
+          email: data.user.email || '',
           name: data.user.user_metadata?.name || '',
           role: 'user',
           subscription: null,
