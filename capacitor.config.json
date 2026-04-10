@@ -2,12 +2,10 @@
   "appId": "com.magicspot.app",
   "appName": "MagicSpot",
   "webDir": "dist",
-  "server": {
-    "androidScheme": "https"
-  },
-  "android": {
-    "allowMixedContent": true,
-    "captureInput": true,
-    "webContentsDebuggingEnabled": false
+  "ios": {
+    "scheme": "MagicSpot",
+    "contentInset": "automatic",
+    "scrollEnabled": true,
+    "limitsNavigationsToAppBoundDomains": true
   }
 }

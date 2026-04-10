@@ -8,6 +8,7 @@ import { EmailConfirmationPage } from '@/app/components/EmailConfirmationPage';
 import { PricingPage } from '@/app/components/PricingPage';
 import { AdminDashboard } from '@/app/components/AdminDashboard';
 import { TermsPage } from '@/app/components/TermsPage';
+import { PrivacyPage } from '@/app/components/PrivacyPage';
 import { ParkingMap } from '@/app/components/ParkingMap';
 import { ParkingData } from '@/app/types/parking';
 import * as api from '@/app/services/api';
@@ -151,7 +152,7 @@ function MapPage() {
       </div>
 
       {/* Floating Top Bar */}
-      <div className="absolute top-3 left-3 right-3 z-[1500] flex items-start justify-between">
+      <div className="absolute left-3 right-3 z-[1500] flex items-start justify-between" style={{ top: 'max(12px, env(safe-area-inset-top))' }}>
         {/* User Menu */}
         {user && (
           <div className="relative user-dropdown-container">
@@ -257,7 +258,7 @@ function MapPage() {
       </div>
 
       {/* Floating Logo */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1500]">
+      <div className="absolute left-1/2 -translate-x-1/2 z-[1500]" style={{ bottom: 'max(24px, env(safe-area-inset-bottom))' }}>
         <button onClick={() => setMapResetTrigger((p) => p + 1)} className="bg-white/90 backdrop-blur-xl rounded-xl px-5 py-2.5 shadow-lg border border-white/60 flex items-center gap-2 hover:bg-white transition-colors">
           <div className="w-7 h-7 bg-gray-900 rounded-lg flex items-center justify-center">
             <MapPin className="w-4 h-4 text-white" />
@@ -301,6 +302,7 @@ export default function App() {
           <Route path="/email-confirmation" element={<EmailConfirmationPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/pricing" element={<AuthGate><PricingPage /></AuthGate>} />
           <Route path="/admin" element={<AdminGate><AdminDashboard /></AdminGate>} />
           <Route path="/" element={<SubscriptionGate><MapPage /></SubscriptionGate>} />

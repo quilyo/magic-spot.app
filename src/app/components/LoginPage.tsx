@@ -453,10 +453,21 @@ export function LoginPage() {
                 />
                 <Label htmlFor="suTerms" className="text-xs text-gray-600 cursor-pointer leading-relaxed">
                   I agree to the{' '}
-                  <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-medium">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/terms')}
+                    className="text-blue-600 hover:underline font-medium"
+                  >
                     Terms and Conditions
-                  </a>{' '}
-                  and Privacy Policy.
+                  </button>{' '}
+                  and{' '}
+                  <button
+                    type="button"
+                    onClick={() => navigate('/privacy')}
+                    className="text-blue-600 hover:underline font-medium"
+                  >
+                    Privacy Policy
+                  </button>.
                 </Label>
               </div>
 
