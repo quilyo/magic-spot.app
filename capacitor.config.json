@@ -6,6 +6,15 @@
     "scheme": "MagicSpot",
     "contentInset": "automatic",
     "scrollEnabled": true,
-    "limitsNavigationsToAppBoundDomains": true
+    "limitsNavigationsToAppBoundDomains": true,
+    "backgroundColor": "#000000"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "launchShowDuration": 2000,
+      "backgroundColor": "#000000",
+      "showSpinner": false
+    }
   }
 }

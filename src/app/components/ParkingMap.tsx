@@ -178,8 +178,12 @@ export function ParkingMap({ spots, onSpotClick, availableCount = 0, occupiedCou
       marker.on('click', () => {
         const currentSpot = spots.find(s => s.id === spotId);
         if (currentSpot) {
-          setSelectedSpot(currentSpot);
-          if (onSpotClick) onSpotClick(currentSpot);
+          // Briefly hide the popup so switching between spots is visually obvious
+          setSelectedSpot(null);
+          setTimeout(() => {
+            setSelectedSpot(currentSpot);
+            if (onSpotClick) onSpotClick(currentSpot);
+          }, 80);
         }
       });
 
@@ -189,19 +193,23 @@ export function ParkingMap({ spots, onSpotClick, availableCount = 0, occupiedCou
   }, [leafletLoaded, spots, onSpotClick]);
 
   // Handle reset trigger - center map on valid parking spots
+  // Only depends on resetTrigger so data refreshes don't re-center the map.
+  // Uses a ref to access the latest spots without adding them as a dependency.
+  const spotsRef = useRef(spots);
+  useEffect(() => { spotsRef.current = spots; }, [spots]);
+
   useEffect(() => {
     if (!leafletLoaded || resetTrigger === 0 || !leafletMapRef.current) return;
 
     const L = (window as any).L;
     if (!L) return;
 
-    // Filter out any spots with invalid (0,0) coordinates
-    const validSpots = spots.filter(s => s.lat !== 0 && s.lon !== 0);
+    const validSpots = spotsRef.current.filter(s => s.lat !== 0 && s.lon !== 0);
     if (validSpots.length === 0) return;
 
     const bounds = L.latLngBounds(validSpots.map(s => [s.lat, s.lon]));
     leafletMapRef.current.fitBounds(bounds, { padding: [40, 40], animate: true, maxZoom: 20 });
-  }, [leafletLoaded, resetTrigger, spots]);
+  }, [leafletLoaded, resetTrigger]);
 
   // Handle window resize + ResizeObserver for container size changes (e.g. after navigation)
   useEffect(() => {
@@ -323,42 +331,29 @@ export function ParkingMap({ spots, onSpotClick, availableCount = 0, occupiedCou
 
       {/* Spot Details Popup */}
       {selectedSpot && (
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-2xl border-2 border-gray-300 p-4 z-[1001] min-w-64 pointer-events-auto">
-          <div className="flex justify-between items-start mb-2">
-            <h3 className="text-gray-900 font-semibold">
-              {(selectedSpot.name || `Spot ${selectedSpot.id}`).replace(/Area(\d+)/g, 'A$1')}
-            </h3>
-            <button
-              onClick={() => setSelectedSpot(null)}
-              className="text-gray-500 hover:text-gray-700"
-            >
+        <div className="absolute left-1/2 -translate-x-1/2 bg-white rounded-2xl shadow-2xl border border-gray-200 p-4 z-[1001] w-[calc(100%-24px)] max-w-sm pointer-events-auto" style={{ bottom: 'calc(max(24px, env(safe-area-inset-bottom)) + 72px)' }}>
+          <div className="flex justify-end mb-3">
+            <button onClick={() => setSelectedSpot(null)} className="text-gray-400 hover:text-gray-600">
               <X className="w-4 h-4" />
             </button>
           </div>
-          <div className="text-sm font-medium mb-3">
-            {selectedSpot.occupied === 1 ? (
-              <span className="text-red-600">🔴 Occupied</span>
-            ) : (
-              <span className="text-green-600">🟢 Available</span>
-            )}
+          <div className="mb-3">
+            <div className="flex items-center gap-2">
+              {selectedSpot.occupied === 1 ? (
+                <div className="w-4 h-4 rounded-full bg-red-500 border-2 border-red-700 flex-shrink-0" />
+              ) : (
+                <div className="w-4 h-4 rounded-full bg-green-500 border-2 border-green-700 flex-shrink-0" />
+              )}
+              <span className={`text-sm font-semibold ${selectedSpot.occupied === 1 ? 'text-red-600' : 'text-green-700'}`}>
+                {selectedSpot.occupied === 1 ? 'Occupied' : 'Available'}
+              </span>
+            </div>
             {(() => {
               const checkTime = selectedSpot.updated_at || selectedSpot.timestamp;
               if (!checkTime) return null;
-              const now = Date.now();
-              const t = new Date(checkTime).getTime();
-              const mins = Math.floor((now - t) / 60000);
-              const label = mins < 1
-                ? 'just now'
-                : mins === 1
-                ? '1 min ago'
-                : mins < 60
-                ? `${mins} min ago`
-                : mins < 120
-                ? '1 hr ago'
-                : `${Math.floor(mins / 60)} hrs ago`;
-              return (
-                <span className="text-xs text-gray-500 font-normal ml-2">checked {label}</span>
-              );
+              const mins = Math.floor((Date.now() - new Date(checkTime).getTime()) / 60000);
+              const label = mins < 1 ? 'just now' : mins === 1 ? '1 min ago' : mins < 60 ? `${mins} min ago` : mins < 120 ? '1 hr ago' : `${Math.floor(mins / 60)} hrs ago`;
+              return <span className="block text-xs text-gray-400 font-normal mt-1 ml-6">checked {label}</span>;
             })()}
           </div>
           <Button
@@ -366,7 +361,7 @@ export function ParkingMap({ spots, onSpotClick, availableCount = 0, occupiedCou
               const url = `https://www.google.com/maps/dir/?api=1&destination=${selectedSpot.lat},${selectedSpot.lon}`;
               window.open(url, '_blank');
             }}
-            className="w-full bg-blue-600 text-white hover:bg-blue-700 font-medium shadow"
+            className="w-full bg-blue-600 text-white hover:bg-blue-700 font-medium shadow rounded-xl"
           >
             <Navigation className="w-4 h-4 mr-2" />
             Navigate to Spot

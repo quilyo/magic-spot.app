@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/app/hooks/useAuth';
 import { SubscriptionGate, AuthGate, AdminGate } from '@/app/components/SubscriptionGate';
@@ -25,6 +25,8 @@ import {
   CreditCard,
   Shield,
   MapPin,
+  Bell,
+  BellOff,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 
@@ -48,11 +50,88 @@ function MapPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteEmailInput, setDeleteEmailInput] = useState('');
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [filter, setFilter] = useState<'all' | 'available' | 'occupied'>('all');
+  const [alertsEnabled, setAlertsEnabled] = useState<boolean>(() => {
+    try { return localStorage.getItem('magicspot_alerts') === '1'; } catch { return false; }
+  });
+  const prevSpotsRef = useRef<Map<string, number>>(new Map()); // spotId -> occupied
+  const lastAlertAtRef = useRef<number>(0);
+  const userLocationRef = useRef<{ lat: number; lon: number } | null>(null);
+  const alertsEnabledRef = useRef<boolean>(alertsEnabled);
+  useEffect(() => { userLocationRef.current = userLocation; }, [userLocation]);
+  useEffect(() => { alertsEnabledRef.current = alertsEnabled; }, [alertsEnabled]);
+
+  // Haversine distance in meters between two lat/lon points
+  const ALERT_RADIUS_M = 200;
+  const distanceMeters = (a: { lat: number; lon: number }, b: { lat: number; lon: number }) => {
+    const R = 6371000;
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const dLat = toRad(b.lat - a.lat);
+    const dLon = toRad(b.lon - a.lon);
+    const lat1 = toRad(a.lat);
+    const lat2 = toRad(b.lat);
+    const h = Math.sin(dLat / 2) ** 2 + Math.sin(dLon / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
+    return 2 * R * Math.asin(Math.sqrt(h));
+  };
+
+  const playChime = () => {
+    try {
+      const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (!AC) return;
+      const ctx = new AC();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(880, ctx.currentTime);
+      o.frequency.setValueAtTime(1320, ctx.currentTime + 0.12);
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+      o.connect(g); g.connect(ctx.destination);
+      o.start();
+      o.stop(ctx.currentTime + 0.4);
+    } catch {}
+  };
 
   const loadParkingData = async () => {
     setLoading(true);
     try {
       const data = await api.fetchParkingData();
+
+      // Diff: find spots that were occupied and are now available
+      const prev = prevSpotsRef.current;
+      const newlyFreed: typeof data.spots = [];
+      for (const spot of data.spots) {
+        const prevState = prev.get(spot.id);
+        if (prevState === 1 && spot.occupied !== 1) newlyFreed.push(spot);
+      }
+      // Update the reference snapshot
+      const nextMap = new Map<string, number>();
+      data.spots.forEach(s => nextMap.set(s.id, s.occupied));
+      prevSpotsRef.current = nextMap;
+
+      // Fire alert if enabled, user has location, and at least one newly-freed spot is nearby
+      if (alertsEnabledRef.current && userLocationRef.current && newlyFreed.length > 0) {
+        const now = Date.now();
+        if (now - lastAlertAtRef.current >= 60000) {
+          const nearby = newlyFreed.filter(s => {
+            if (!s.lat || !s.lon) return false;
+            return distanceMeters(userLocationRef.current!, { lat: s.lat, lon: s.lon }) <= ALERT_RADIUS_M;
+          });
+          if (nearby.length > 0) {
+            lastAlertAtRef.current = now;
+            playChime();
+            const msg = nearby.length === 1
+              ? 'A parking spot just opened nearby'
+              : `${nearby.length} parking spots just opened nearby`;
+            toast.success(msg, {
+              description: 'Tap to see it on the map',
+              action: { label: 'View', onClick: () => setMapResetTrigger(p => p + 1) },
+            });
+          }
+        }
+      }
+
       setParkingData(data);
       setLastUpdated(new Date(data.timestamp));
     } catch (error) {
@@ -61,6 +140,19 @@ function MapPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleAlerts = () => {
+    if (!userLocation && !alertsEnabled) {
+      toast.error('Enable location to use spot alerts');
+      return;
+    }
+    setAlertsEnabled(prev => {
+      const next = !prev;
+      try { localStorage.setItem('magicspot_alerts', next ? '1' : '0'); } catch {}
+      toast.success(next ? 'Spot alerts enabled' : 'Spot alerts disabled');
+      return next;
+    });
   };
 
   // Load data and set up auto-refresh
@@ -142,7 +234,9 @@ function MapPage() {
       {/* Full-screen map */}
       <div className="absolute inset-0">
         <ParkingMap
-          spots={parkingData?.spots || []}
+          spots={(parkingData?.spots || []).filter(s =>
+            filter === 'all' ? true : filter === 'available' ? s.occupied !== 1 : s.occupied === 1
+          )}
           availableCount={parkingData?.available_count || 0}
           occupiedCount={parkingData?.occupied_count || 0}
           resetTrigger={mapResetTrigger}
@@ -225,10 +319,24 @@ function MapPage() {
 
         {/* Right Controls */}
         <div className="flex flex-col items-end gap-2">
-          <Button onClick={loadParkingData} disabled={loading} size="sm" className="bg-white/90 backdrop-blur-xl border border-white/60 text-gray-900 hover:bg-white font-medium shadow-lg rounded-xl">
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            <span className="ml-2 hidden sm:inline">{loading ? 'Updating...' : 'Refresh'}</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={toggleAlerts}
+              size="sm"
+              title={alertsEnabled ? 'Disable spot alerts' : 'Enable spot alerts'}
+              className={`backdrop-blur-xl border font-medium shadow-lg rounded-xl ${
+                alertsEnabled
+                  ? 'bg-blue-600 text-white border-blue-700 hover:bg-blue-700'
+                  : 'bg-white/90 border-white/60 text-gray-900 hover:bg-white'
+              }`}
+            >
+              {alertsEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+            </Button>
+            <Button onClick={loadParkingData} disabled={loading} size="sm" className="bg-white/90 backdrop-blur-xl border border-white/60 text-gray-900 hover:bg-white font-medium shadow-lg rounded-xl">
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <span className="ml-2 hidden sm:inline">{loading ? 'Updating...' : 'Refresh'}</span>
+            </Button>
+          </div>
           {lastUpdated && (
             <span className="text-xs text-gray-900 bg-white/90 backdrop-blur-xl px-2.5 py-1 rounded-xl shadow-lg border border-white/60 leading-tight text-right">
               {loading ? 'Updating…' : (
@@ -242,16 +350,22 @@ function MapPage() {
               )}
             </span>
           )}
-          <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-lg p-3 border border-white/60">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
+          <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-lg p-1.5 border border-white/60">
+            <div className="space-y-1">
+              <button
+                onClick={() => setFilter(f => f === 'available' ? 'all' : 'available')}
+                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors ${filter === 'available' ? 'bg-green-50 ring-2 ring-green-500' : 'hover:bg-gray-50'}`}
+              >
                 <div className="w-4 h-4 rounded-full bg-green-500 border-2 border-green-700 flex-shrink-0"></div>
                 <span className="text-sm text-gray-900 font-medium">Available: {parkingData?.available_count || 0}</span>
-              </div>
-              <div className="flex items-center gap-2">
+              </button>
+              <button
+                onClick={() => setFilter(f => f === 'occupied' ? 'all' : 'occupied')}
+                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors ${filter === 'occupied' ? 'bg-red-50 ring-2 ring-red-500' : 'hover:bg-gray-50'}`}
+              >
                 <div className="w-4 h-4 rounded-full bg-red-500 border-2 border-red-800 flex-shrink-0"></div>
                 <span className="text-sm text-gray-900 font-medium">Occupied: {parkingData?.occupied_count || 0}</span>
-              </div>
+              </button>
             </div>
           </div>
         </div>
