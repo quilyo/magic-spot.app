@@ -43,3 +43,10 @@ Thumbs.db
 # Logs
 logs/
 *.log
+
+# Design assets and local files
+M-Map*
+magicspot-icon.png
+icon-concepts.html
+icon-concepts-v2.html
+supabase_phone_auth_migration.sql

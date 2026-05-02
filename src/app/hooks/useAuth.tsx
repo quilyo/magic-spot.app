@@ -1,15 +1,20 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { flushSync } from 'react-dom';
 import { supabase } from '@/utils/supabase/client';
-import type { UserProfile, Subscription, SubscriptionTier } from '@/app/types/subscription';
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  role: 'user' | 'admin';
+  created_at: string;
+}
 
 interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
-  hasActiveSubscription: boolean;
-  subscriptionTier: SubscriptionTier;
   login: (email: string, password: string) => Promise<UserProfile>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -32,7 +37,6 @@ async function fetchUserProfile(userId: string, email: string | undefined, name:
   // Phone users have no email — use a placeholder so the NOT NULL column doesn't break
   const resolvedEmail = email || (phone ? `phone_${phone.replace(/\D/g, '')}@phone.auth` : '');
   let profile: any = null;
-  let sub: any = null;
 
   try {
     console.log('[Auth] Fetching profile for', userId);
@@ -52,45 +56,12 @@ async function fetchUserProfile(userId: string, email: string | undefined, name:
     console.error('[Auth] Profile fetch exception:', err);
   }
 
-  try {
-    console.log('[Auth] Fetching subscriptions for', userId);
-    const { data: subData, error: subError } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(5);
-
-    if (subError) {
-      console.error('[Auth] Error fetching subscriptions:', subError.message, subError.code, subError.hint);
-    } else if (subData && subData.length > 0) {
-      sub = subData.find((s: any) => s.status === 'active') || subData[0];
-      console.log('[Auth] Subscription found:', sub?.tier, sub?.status, 'expires:', sub?.expires_at);
-    } else {
-      console.log('[Auth] No subscriptions found');
-    }
-  } catch (err) {
-    console.error('[Auth] Subscription fetch exception:', err);
-  }
-
   if (profile) {
     return {
       id: profile.id,
       email: profile.email || resolvedEmail,
       name: profile.name,
       role: profile.role || 'user',
-      subscription: sub ? {
-        id: sub.id,
-        user_id: sub.user_id,
-        tier: sub.tier,
-        status: sub.status,
-        starts_at: sub.starts_at,
-        expires_at: sub.expires_at,
-        stripe_customer_id: sub.stripe_customer_id,
-        stripe_subscription_id: sub.stripe_subscription_id,
-        created_at: sub.created_at,
-        updated_at: sub.updated_at,
-      } : null,
       created_at: profile.created_at,
     };
   }
@@ -116,7 +87,6 @@ async function fetchUserProfile(userId: string, email: string | undefined, name:
     email: resolvedEmail,
     name,
     role: 'user',
-    subscription: null,
     created_at: new Date().toISOString(),
   };
 }
@@ -134,8 +104,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session.user.user_metadata?.name || '',
         session.user.phone
       );
-      // flushSync ensures the state is committed synchronously so callers
-      // can navigate immediately and components see the updated profile.
       flushSync(() => setUser(profile));
       return profile;
     }
@@ -179,8 +147,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, 20000);
 
     checkSession().then(() => {
-      // Cancel safety timeout once checkSession finishes,
-      // so it can't interfere with login()'s loading state later.
       clearTimeout(safetyTimeoutId);
     });
 
@@ -189,8 +155,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === 'SIGNED_OUT') {
         setUser(null);
       }
-      // Don't fetch profile here — login/signup/checkSession handle it.
-      // Awaiting async work here blocks signInWithPassword from resolving.
     });
 
     return () => {
@@ -202,18 +166,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string): Promise<UserProfile> => {
     console.log('[Auth] Logging in...');
-    setLoading(true); // Prevent SubscriptionGate from redirecting to /pricing mid-login
+    setLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw new Error(error.message);
       if (!data.user) throw new Error('No user data returned');
       console.log('[Auth] Sign in successful, user:', data.user.id);
 
-      // Fetch the full profile (with subscription/role) before setting user.
       let profile: UserProfile;
       try {
         profile = await fetchUserProfile(data.user.id, data.user.email, data.user.user_metadata?.name || '', data.user.phone);
-        console.log('[Auth] Profile loaded on login:', profile.role, 'sub:', profile.subscription?.tier, profile.subscription?.status);
+        console.log('[Auth] Profile loaded on login:', profile.role);
       } catch (err) {
         console.error('[Auth] Profile fetch on login failed, using minimal user:', err);
         profile = {
@@ -221,12 +184,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: data.user.email || '',
           name: data.user.user_metadata?.name || '',
           role: 'user',
-          subscription: null,
           created_at: new Date().toISOString(),
         };
       }
-      // flushSync commits both updates synchronously so that
-      // when the caller navigates, SubscriptionGate sees the real state.
       flushSync(() => {
         setUser(profile);
         setLoading(false);
@@ -257,7 +217,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: data.user.email!,
       name,
       role: 'user',
-      subscription: null,
       created_at: new Date().toISOString(),
     });
 
@@ -267,8 +226,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    // Always clear local state first so the user is signed out in the UI
-    // even if the Supabase API call fails (e.g. 403 from an expired token).
     setUser(null);
     try {
       await supabase.auth.signOut();
@@ -292,22 +249,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAuthenticated = !!user;
   const isAdmin = user?.role === 'admin';
 
-  const subscription = user?.subscription;
-  const hasActiveSubscription = !!subscription && subscription.status === 'active' &&
-    (!subscription.expires_at || new Date(subscription.expires_at) > new Date());
-
-  const subscriptionTier: SubscriptionTier = hasActiveSubscription
-    ? (subscription?.tier || 'none')
-    : 'none';
-
   return (
     <AuthContext.Provider value={{
       user,
       loading,
       isAuthenticated,
       isAdmin,
-      hasActiveSubscription,
-      subscriptionTier,
       login,
       signup,
       logout,

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MagicSpot</string>
+    <string name="title_activity_main">MagicSpot</string>
+    <string name="package_name">com.magicspot.app</string>
+    <string name="custom_url_scheme">com.magicspot.app</string>
+</resources>

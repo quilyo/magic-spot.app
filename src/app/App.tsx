@@ -1,12 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/app/hooks/useAuth';
-import { SubscriptionGate, AuthGate, AdminGate } from '@/app/components/SubscriptionGate';
 import { LoginPage } from '@/app/components/LoginPage';
 import { ResetPasswordPage } from '@/app/components/ResetPasswordPage';
 import { EmailConfirmationPage } from '@/app/components/EmailConfirmationPage';
-import { PricingPage } from '@/app/components/PricingPage';
-import { AdminDashboard } from '@/app/components/AdminDashboard';
 import { TermsPage } from '@/app/components/TermsPage';
 import { PrivacyPage } from '@/app/components/PrivacyPage';
 import { ParkingMap } from '@/app/components/ParkingMap';
@@ -14,6 +11,7 @@ import { ParkingData } from '@/app/types/parking';
 import * as api from '@/app/services/api';
 import { toast } from 'sonner';
 import { Toaster } from '@/app/components/ui/sonner';
+import { Loader2 } from 'lucide-react';
 import {
   RefreshCw,
   LogOut,
@@ -22,22 +20,34 @@ import {
   Mail,
   ChevronRight,
   Trash2,
-  CreditCard,
-  Shield,
   MapPin,
   Bell,
   BellOff,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 
+/* ─── Auth guards ─── */
+function AuthGate({ children }: { children: ReactNode }) {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return <LoadingScreen />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+      <div className="flex items-center gap-3 text-gray-600">
+        <Loader2 className="w-5 h-5 animate-spin" />
+        <span>Loading...</span>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Map Page (main authenticated view) ─── */
 function MapPage() {
-  const {
-    user,
-    isAdmin,
-    subscriptionTier,
-    logout,
-  } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const [parkingData, setParkingData] = useState<ParkingData | null>(null);
@@ -54,14 +64,13 @@ function MapPage() {
   const [alertsEnabled, setAlertsEnabled] = useState<boolean>(() => {
     try { return localStorage.getItem('magicspot_alerts') === '1'; } catch { return false; }
   });
-  const prevSpotsRef = useRef<Map<string, number>>(new Map()); // spotId -> occupied
+  const prevSpotsRef = useRef<Map<string, number>>(new Map());
   const lastAlertAtRef = useRef<number>(0);
   const userLocationRef = useRef<{ lat: number; lon: number } | null>(null);
   const alertsEnabledRef = useRef<boolean>(alertsEnabled);
   useEffect(() => { userLocationRef.current = userLocation; }, [userLocation]);
   useEffect(() => { alertsEnabledRef.current = alertsEnabled; }, [alertsEnabled]);
 
-  // Haversine distance in meters between two lat/lon points
   const ALERT_RADIUS_M = 200;
   const distanceMeters = (a: { lat: number; lon: number }, b: { lat: number; lon: number }) => {
     const R = 6371000;
@@ -98,19 +107,16 @@ function MapPage() {
     try {
       const data = await api.fetchParkingData();
 
-      // Diff: find spots that were occupied and are now available
       const prev = prevSpotsRef.current;
       const newlyFreed: typeof data.spots = [];
       for (const spot of data.spots) {
         const prevState = prev.get(spot.id);
         if (prevState === 1 && spot.occupied !== 1) newlyFreed.push(spot);
       }
-      // Update the reference snapshot
       const nextMap = new Map<string, number>();
       data.spots.forEach(s => nextMap.set(s.id, s.occupied));
       prevSpotsRef.current = nextMap;
 
-      // Fire alert if enabled, user has location, and at least one newly-freed spot is nearby
       if (alertsEnabledRef.current && userLocationRef.current && newlyFreed.length > 0) {
         const now = Date.now();
         if (now - lastAlertAtRef.current >= 60000) {
@@ -155,14 +161,12 @@ function MapPage() {
     });
   };
 
-  // Load data and set up auto-refresh
   useEffect(() => {
     loadParkingData();
     const interval = setInterval(loadParkingData, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // Geolocation tracking
   useEffect(() => {
     if (!navigator.geolocation) return;
     const watchId = navigator.geolocation.watchPosition(
@@ -173,7 +177,6 @@ function MapPage() {
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (isDropdownOpen && !(e.target as HTMLElement).closest('.user-dropdown-container')) {
@@ -205,11 +208,10 @@ function MapPage() {
       const { supabase } = await import('@/utils/supabase/client');
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { toast.error('No active session'); return; }
-      
-      // Construct the Supabase URL using the project ID (same as client.tsx)
+
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const supabaseUrl = `https://${projectId}.supabase.co`;
-      
+
       const response = await fetch(
         `${supabaseUrl}/functions/v1/make-server-42996a40/delete-account`,
         { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` } }
@@ -222,12 +224,6 @@ function MapPage() {
       toast.error(error.message || 'Failed to delete account');
     }
   };
-
-  const tierBadge = subscriptionTier === 'pro'
-    ? <span className="bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ml-2">PRO</span>
-    : subscriptionTier === 'beta'
-    ? <span className="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ml-2">BETA</span>
-    : null;
 
   return (
     <div className="flex flex-col relative overflow-hidden bg-gray-100" style={{ height: '100dvh', minHeight: '100dvh' }}>
@@ -258,7 +254,6 @@ function MapPage() {
             >
               <User className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline max-w-[120px] truncate">{user.name || user.email}</span>
-              {tierBadge}
               <ChevronDown className="w-4 h-4 ml-1" />
             </Button>
 
@@ -275,11 +270,7 @@ function MapPage() {
                       <div className="px-3 py-2 text-sm">
                         <div className="font-medium text-gray-900">{user.name}</div>
                         <div className="text-xs text-gray-500">{user.email}</div>
-                        {tierBadge && <div className="mt-1">{tierBadge}</div>}
                       </div>
-                      <button onClick={() => { navigate('/pricing'); setIsDropdownOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-white rounded-lg transition-colors">
-                        <CreditCard className="w-3.5 h-3.5" /> Subscription
-                      </button>
                       <button onClick={() => { setShowDeleteModal(true); setIsDropdownOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                         <Trash2 className="w-3.5 h-3.5" /> Delete Account
                       </button>
@@ -297,13 +288,6 @@ function MapPage() {
                         <Mail className="w-3.5 h-3.5 flex-shrink-0" /><span className="text-xs break-all">mshelp@magic-spot.com</span>
                       </a>
                     </div>
-                  )}
-
-                  {/* Admin */}
-                  {isAdmin && (
-                    <button onClick={() => { navigate('/admin'); setIsDropdownOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-purple-700 hover:bg-purple-50 rounded-lg transition-colors mt-1">
-                      <Shield className="w-4 h-4" /><span className="font-medium">Admin Dashboard</span>
-                    </button>
                   )}
 
                   <div className="border-t border-gray-200 mt-1 pt-1">
@@ -417,9 +401,7 @@ export default function App() {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
-          <Route path="/pricing" element={<AuthGate><PricingPage /></AuthGate>} />
-          <Route path="/admin" element={<AdminGate><AdminDashboard /></AdminGate>} />
-          <Route path="/" element={<SubscriptionGate><MapPage /></SubscriptionGate>} />
+          <Route path="/" element={<AuthGate><MapPage /></AuthGate>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

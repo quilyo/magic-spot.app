@@ -1,6 +1,7 @@
 import { ParkingData, ParkingSpot } from '@/app/types/parking';
 import { supabase } from '@/utils/supabase/client';
 
+
 export const fetchParkingData = async (): Promise<ParkingData> => {
   try {
     // Fetch from normalized parking_spots table

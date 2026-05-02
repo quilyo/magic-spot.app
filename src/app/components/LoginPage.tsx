@@ -34,7 +34,7 @@ export function LoginPage() {
   const [otp, setOtp] = useState('');
   const [pendingEmail, setPendingEmail] = useState('');
 
-  const { login, isAuthenticated, hasActiveSubscription, loading: authLoading, refreshProfile } = useAuth();
+  const { login, isAuthenticated, loading: authLoading, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const mapBgRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -92,9 +92,9 @@ export function LoginPage() {
   // ── redirect if already authenticated ────────────────────────────────────
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      navigate(hasActiveSubscription ? '/' : '/pricing', { replace: true });
+      navigate('/', { replace: true });
     }
-  }, [isAuthenticated, authLoading, hasActiveSubscription, navigate]);
+  }, [isAuthenticated, authLoading, navigate]);
 
   // ── restore remembered email ──────────────────────────────────────────────
   useEffect(() => {
@@ -115,13 +115,8 @@ export function LoginPage() {
     return null;
   };
 
-  const redirectAfterAuth = (profile: any) => {
-    const sub = profile?.subscription;
-    const active =
-      !!sub &&
-      sub.status === 'active' &&
-      (!sub.expires_at || new Date(sub.expires_at) > new Date());
-    navigate(active || profile?.role === 'admin' ? '/' : '/pricing', { replace: true });
+  const redirectAfterAuth = (_profile: any) => {
+    navigate('/', { replace: true });
   };
 
   // ── sign-in ───────────────────────────────────────────────────────────────

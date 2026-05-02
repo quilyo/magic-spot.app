@@ -1,12 +1,13 @@
 {
   "name": "@figma/my-make-file",
   "private": true,
-  "version": "0.0.1",
+  "version": "1.0.0",
   "license": "MIT",
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "vite",
+    "bump": "node scripts/bump-version.js"
   },
   "dependencies": {
     "@capacitor/cli": "^8.2.0",
