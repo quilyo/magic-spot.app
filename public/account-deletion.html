@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MagicSpot — Account & Data Deletion</title>
+<meta name="description" content="How to permanently delete your MagicSpot account and what data is removed, retained, and for how long.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --red:#E8281E;--red-dark:#B81F16;
+  --black:#0A0A0A;--dark:#111111;--dark2:#181818;
+  --surface:#1E1E1E;--surface2:#272727;
+  --border:rgba(255,255,255,0.08);--border-red:rgba(232,40,30,0.22);
+  --text:#F0EDE8;--text2:#9A9087;--green:#22C55E;--radius:14px;
+}
+html{scroll-behavior:smooth;}
+body{font-family:'DM Sans',sans-serif;background:var(--black);color:var(--text);font-size:16px;line-height:1.7;overflow-x:hidden;}
+nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 48px;background:rgba(10,10,10,0.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);}
+.nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none;}
+.nav-brand img{width:36px;height:36px;border-radius:8px;object-fit:contain;}
+.nav-brand-text{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1px;color:var(--text);}
+.nav-brand-text b{color:var(--red);}
+.nav-links{display:flex;gap:28px;}
+.nav-links a{font-size:14px;color:var(--text2);text-decoration:none;transition:color 0.2s;}
+.nav-links a:hover{color:var(--text);}
+.hero{padding:80px 24px 48px;text-align:center;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 50% 80% at 50% 0%,rgba(232,40,30,0.1) 0%,transparent 65%);pointer-events:none;}
+.page-tag{display:inline-flex;align-items:center;gap:8px;background:rgba(232,40,30,0.1);border:1px solid rgba(232,40,30,0.3);border-radius:50px;padding:6px 18px;font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--red);margin-bottom:24px;}
+h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(48px,7vw,80px);line-height:0.95;letter-spacing:2px;margin-bottom:18px;}
+.hero-sub{font-size:18px;color:var(--text2);font-weight:300;max-width:620px;margin:0 auto;}
+main{max-width:780px;margin:0 auto;padding:32px 24px 100px;}
+section{margin-top:56px;}
+h2{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:1.5px;margin-bottom:18px;color:var(--text);}
+h2 .num{color:var(--red);margin-right:10px;}
+h3{font-size:17px;font-weight:600;color:var(--text);margin:22px 0 8px;}
+p{margin-bottom:14px;color:var(--text2);}
+p strong, li strong{color:var(--text);font-weight:600;}
+ul, ol{padding-left:22px;margin-bottom:14px;color:var(--text2);}
+li{margin-bottom:8px;}
+a.link{color:var(--red);text-decoration:none;border-bottom:1px solid rgba(232,40,30,0.4);transition:border-color 0.2s;}
+a.link:hover{border-color:var(--red);}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px 28px;margin-bottom:18px;}
+.card.accent{border-color:var(--border-red);background:linear-gradient(180deg,rgba(232,40,30,0.05) 0%,var(--surface) 100%);}
+.tag{display:inline-block;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;padding:4px 10px;border-radius:50px;margin-right:8px;}
+.tag.del{background:rgba(232,40,30,0.15);color:var(--red);border:1px solid rgba(232,40,30,0.35);}
+.tag.keep{background:rgba(255,193,7,0.12);color:#FFC107;border:1px solid rgba(255,193,7,0.3);}
+table{width:100%;border-collapse:collapse;margin:14px 0 18px;font-size:14.5px;}
+table th, table td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:top;}
+table th{font-weight:600;color:var(--text);background:var(--surface2);font-size:12px;letter-spacing:1px;text-transform:uppercase;}
+table td{color:var(--text2);}
+.steps{counter-reset:step;list-style:none;padding:0;}
+.steps li{counter-increment:step;padding-left:48px;position:relative;margin-bottom:18px;}
+.steps li::before{content:counter(step);position:absolute;left:0;top:0;width:32px;height:32px;border-radius:50%;background:var(--red);color:#fff;font-weight:600;display:flex;align-items:center;justify-content:center;font-size:14px;}
+footer{padding:48px 24px;text-align:center;border-top:1px solid var(--border);color:var(--text2);font-size:13px;}
+footer .links{margin-bottom:14px;display:flex;gap:24px;justify-content:center;flex-wrap:wrap;}
+footer a{color:var(--text2);text-decoration:none;}
+footer a:hover{color:var(--text);}
+.meta{color:var(--text2);font-size:13px;margin-top:6px;}
+@media(max-width:640px){nav{padding:14px 20px;}.nav-links{display:none;}main{padding:16px 20px 60px;}h1{font-size:48px;}h2{font-size:26px;}.steps li{padding-left:42px;}.steps li::before{width:28px;height:28px;font-size:13px;}}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-brand">
+    <span class="nav-brand-text">MAGIC<b>SPOT</b></span>
+  </a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/support/">Support</a>
+    <a href="/privacy">Privacy</a>
+    <a href="/terms">Terms</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="page-tag">Account & Data Deletion</div>
+  <h1>Delete Your MagicSpot Account</h1>
+  <p class="hero-sub">You can permanently delete your MagicSpot account and associated personal data at any time. This page explains how, what gets removed, and what we briefly retain.</p>
+  <p class="meta">Last updated: May 2, 2026</p>
+</header>
+
+<main>
+
+<section>
+  <h2><span class="num">1.</span>About This Page</h2>
+  <p>This page applies to <strong>MagicSpot</strong>, a real-time street parking availability app published on the Google Play Store and the Apple App Store. MagicSpot is operated by the developer behind the <a class="link" href="https://magic-spot.com">magic-spot.com</a> service ("we," "us," "MagicSpot").</p>
+  <p>If you have any questions about deleting your account or your data, contact us at <a class="link" href="mailto:mshelp@magic-spot.com">mshelp@magic-spot.com</a>.</p>
+</section>
+
+<section>
+  <h2><span class="num">2.</span>How to Delete Your Account</h2>
+  <p>You have two ways to request account deletion. Either method permanently removes your account and the personal data described in Section&nbsp;3.</p>
+
+  <h3>Option A — Delete in-app (recommended)</h3>
+  <ol class="steps">
+    <li><strong>Open the MagicSpot app</strong> on your Android or iOS device and sign in.</li>
+    <li>Tap the <strong>menu icon</strong> in the top-left corner of the map screen.</li>
+    <li>Select <strong>"My Account"</strong>, then choose <strong>"Delete Account"</strong>.</li>
+    <li>Type your <strong>email address</strong> in the confirmation field to verify the request, then tap <strong>"Delete"</strong>.</li>
+    <li>Your account and the data listed below are removed immediately. You will be signed out and returned to the login screen.</li>
+  </ol>
+
+  <h3>Option B — Request deletion by email</h3>
+  <ol class="steps">
+    <li>Send an email to <a class="link" href="mailto:mshelp@magic-spot.com?subject=Account%20Deletion%20Request">mshelp@magic-spot.com</a> from the email address registered to your MagicSpot account.</li>
+    <li>Use the subject line <strong>"Account Deletion Request"</strong> and include your account email in the body.</li>
+    <li>We will verify your identity by replying to that email address and complete the deletion within <strong>7 business days</strong>. You will receive a confirmation email when deletion is complete.</li>
+  </ol>
+</section>
+
+<section>
+  <h2><span class="num">3.</span>What Gets Deleted</h2>
+  <p>When you delete your account, we permanently remove the following from our active systems:</p>
+  <table>
+    <thead>
+      <tr><th>Data Type</th><th>Status</th><th>When</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Account email address</td><td><span class="tag del">Deleted</span></td><td>Immediately</td></tr>
+      <tr><td>Display name</td><td><span class="tag del">Deleted</span></td><td>Immediately</td></tr>
+      <tr><td>Hashed password</td><td><span class="tag del">Deleted</span></td><td>Immediately</td></tr>
+      <tr><td>User profile record (account ID, role, created date)</td><td><span class="tag del">Deleted</span></td><td>Immediately</td></tr>
+      <tr><td>Active session tokens (you are signed out everywhere)</td><td><span class="tag del">Deleted</span></td><td>Immediately</td></tr>
+      <tr><td>Email-confirmation and password-reset records linked to your account</td><td><span class="tag del">Deleted</span></td><td>Immediately</td></tr>
+    </tbody>
+  </table>
+  <p><strong>Location data:</strong> MagicSpot uses your device's GPS only to display your position on the map while you are using the app. Your GPS coordinates are <strong>never stored on our servers</strong>, so there is nothing to delete on the server side. Any cached map state on your device is removed when you uninstall the app or clear app data in your device settings.</p>
+</section>
+
+<section>
+  <h2><span class="num">4.</span>What Is Briefly Retained, and Why</h2>
+  <p>For security, fraud prevention, and disaster recovery, the following limited information may be retained for a short period after deletion. None of it is used to identify or contact you, and it is permanently purged at the end of the retention window.</p>
+  <table>
+    <thead>
+      <tr><th>Data Type</th><th>Status</th><th>Retention Period</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Encrypted database backups containing your account record</td><td><span class="tag keep">Retained</span></td><td>Up to <strong>30 days</strong>, then automatically purged</td></tr>
+      <tr><td>Authentication and security logs (timestamps, IP addresses of sign-in attempts) — stored by our authentication provider</td><td><span class="tag keep">Retained</span></td><td>Up to <strong>90 days</strong>, then automatically purged</td></tr>
+      <tr><td>Email-delivery logs at our email-sending provider (delivery status of past confirmation emails)</td><td><span class="tag keep">Retained</span></td><td>Up to <strong>30 days</strong>, then automatically purged</td></tr>
+      <tr><td>Records required to comply with a legal obligation, court order, or active fraud investigation</td><td><span class="tag keep">Retained</span></td><td>Only as long as legally required</td></tr>
+    </tbody>
+  </table>
+  <p>Backups are encrypted at rest. We do not access them except to recover from a service-wide incident. If a backup is restored after your deletion, your account record is removed again as part of the restoration process.</p>
+</section>
+
+<section>
+  <h2><span class="num">5.</span>Data MagicSpot Does Not Collect</h2>
+  <p>For clarity, MagicSpot does not collect, store, or share any of the following from end users at any time, so there is nothing to delete in these categories:</p>
+  <ul>
+    <li>Phone number, date of birth, postal address, or government identifiers</li>
+    <li>Photos, videos, contacts, microphone or camera input</li>
+    <li>Payment or financial information</li>
+    <li>Advertising identifiers, third-party analytics events, or tracking pixels</li>
+    <li>Stored historical location, parking history, or movement traces</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="num">6.</span>Effects of Deletion</h2>
+  <ul>
+    <li>You will be signed out of MagicSpot on all devices.</li>
+    <li>You will no longer be able to sign in with the deleted email address. To use MagicSpot again, you can create a new account at any time.</li>
+    <li>You will stop receiving any account-related emails from MagicSpot.</li>
+    <li>Deletion cannot be reversed. If you change your mind, you will need to create a new account.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="num">7.</span>Contact</h2>
+  <p>For questions, concerns, or to request a copy of the data associated with your account before deletion, contact us at <a class="link" href="mailto:mshelp@magic-spot.com">mshelp@magic-spot.com</a>. We respond within 7 business days.</p>
+</section>
+
+</main>
+
+<footer>
+  <div class="links">
+    <a href="/">Home</a>
+    <a href="/support/">Support</a>
+    <a href="/privacy">Privacy Policy</a>
+    <a href="/terms">Terms</a>
+  </div>
+  <div>&copy; 2026 MagicSpot. All rights reserved.</div>
+</footer>
+
+</body>
+</html>
