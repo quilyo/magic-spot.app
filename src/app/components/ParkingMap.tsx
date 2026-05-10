@@ -338,6 +338,12 @@ export function ParkingMap({ spots, onSpotClick, availableCount = 0, occupiedCou
             </button>
           </div>
           <div className="mb-3">
+            {(selectedSpot.name || selectedSpot.area) && (
+              <div className="mb-2">
+                {selectedSpot.name && <p className="text-sm font-bold text-gray-900">{selectedSpot.name}</p>}
+                {selectedSpot.area && <p className="text-xs text-gray-500">{selectedSpot.area}</p>}
+              </div>
+            )}
             <div className="flex items-center gap-2">
               {selectedSpot.occupied === 1 ? (
                 <div className="w-4 h-4 rounded-full bg-red-500 border-2 border-red-700 flex-shrink-0" />
