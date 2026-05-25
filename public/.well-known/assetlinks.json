@@ -3,6 +3,9 @@
   "target": {
     "namespace": "android_app",
     "package_name": "com.magicspot.app",
-    "sha256_cert_fingerprints": ["C6:0B:7D:2D:52:72:80:05:8D:BA:4C:F9:87:AD:D8:42:CA:4A:58:B9:0A:B4:F0:72:43:10:27:88:D7:31:13:B4"]
+    "sha256_cert_fingerprints": [
+      "C6:0B:7D:2D:52:72:80:05:8D:BA:4C:F9:87:AD:D8:42:CA:4A:58:B9:0A:B4:F0:72:43:10:27:88:D7:31:13:B4",
+      "46:56:F8:0F:40:68:76:47:FF:37:3C:CC:B7:6F:E5:EB:A1:96:0E:AC:EB:B2:F1:DC:CC:3D:7B:D1:49:6D:9A:6F"
+    ]
   }
 }]
