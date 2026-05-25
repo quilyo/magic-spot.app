@@ -5,10 +5,10 @@ import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { toast } from 'sonner';
-import { KeyRound, ArrowLeft, Check, Loader2 } from 'lucide-react';
+import { KeyRound, ArrowLeft, Check, Loader2, Smartphone } from 'lucide-react';
 import { supabase } from '@/utils/supabase/client';
 
-type ResetStep = 'request' | 'update';
+type ResetStep = 'request' | 'update' | 'done';
 
 export function ResetPasswordPage() {
   const [email, setEmail] = useState('');
@@ -96,14 +96,46 @@ export function ResetPasswordPage() {
     setLoading(true);
     try {
       await updatePassword(newPassword);
-      toast.success('Password updated successfully!');
-      navigate('/login');
+      setStep('done');
     } catch (error: any) {
       toast.error(error.message || 'Failed to update password');
     } finally {
       setLoading(false);
     }
   };
+
+  // Success screen — shown after password is updated
+  if (step === 'done') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/60 p-8 text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Check className="w-8 h-8 text-green-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Password Updated!</h2>
+            <p className="text-gray-500 text-sm mb-8">
+              Your password has been successfully updated. You can now log in to the app with your new password.
+            </p>
+            <Button
+              onClick={() => { window.location.href = 'magicspot://login'; }}
+              className="w-full bg-gray-900 text-white hover:bg-gray-800 font-medium rounded-xl py-3 mb-3"
+            >
+              <Smartphone className="w-4 h-4 mr-2" />
+              Return to App
+            </Button>
+            <button
+              type="button"
+              onClick={() => navigate('/login')}
+              className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              Continue on web instead
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Update password form (when coming from email link)
   if (step === 'update') {

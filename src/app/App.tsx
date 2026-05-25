@@ -35,6 +35,10 @@ function DeepLinkHandler() {
     const setup = async () => {
       sub = await CapApp.addListener('appUrlOpen', (event) => {
         try {
+          if (event.url.startsWith('magicspot://')) {
+            navigate('/login');
+            return;
+          }
           const url = new URL(event.url);
           if (url.pathname.startsWith('/reset-password')) {
             navigate(`/reset-password${url.hash}`);
