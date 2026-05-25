@@ -10,6 +10,8 @@
     "bump": "node scripts/bump-version.js"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/app": "^8.1.0",
     "@capacitor/cli": "^8.2.0",
     "@capacitor/core": "^8.2.0",
     "@capacitor/geolocation": "^8.2.0",

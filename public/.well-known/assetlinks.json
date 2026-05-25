@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.magicspot.app",
+    "sha256_cert_fingerprints": ["C6:0B:7D:2D:52:72:80:05:8D:BA:4C:F9:87:AD:D8:42:CA:4A:58:B9:0A:B4:F0:72:43:10:27:88:D7:31:13:B4"]
+  }
+}]

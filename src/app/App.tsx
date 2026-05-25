@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { App as CapApp } from '@capacitor/app';
 import { AuthProvider, useAuth } from '@/app/hooks/useAuth';
 import { LoginPage } from '@/app/components/LoginPage';
 import { ResetPasswordPage } from '@/app/components/ResetPasswordPage';
@@ -25,6 +26,29 @@ import {
   BellOff,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
+
+/* ─── Deep link handler for iOS/Android password reset and email confirmation ─── */
+function DeepLinkHandler() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    let sub: any;
+    const setup = async () => {
+      sub = await CapApp.addListener('appUrlOpen', (event) => {
+        try {
+          const url = new URL(event.url);
+          if (url.pathname.startsWith('/reset-password')) {
+            navigate(`/reset-password${url.hash}`);
+          } else if (url.pathname.startsWith('/email-confirmation')) {
+            navigate(`/email-confirmation${url.hash}`);
+          }
+        } catch {}
+      });
+    };
+    setup();
+    return () => { sub?.remove(); };
+  }, [navigate]);
+  return null;
+}
 
 /* ─── Auth guards ─── */
 function AuthGate({ children }: { children: ReactNode }) {
@@ -394,6 +418,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <DeepLinkHandler />
         <Toaster position="top-center" toastOptions={{ className: 'rounded-xl' }} />
         <Routes>
           <Route path="/login" element={<LoginPage />} />

@@ -205,7 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: {
         data: { name },
-        emailRedirectTo: `${window.location.origin}/email-confirmation`,
+        emailRedirectTo: 'https://magic-spot.com/email-confirmation',
       },
     });
     if (error) throw new Error(error.message);
@@ -236,7 +236,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: 'https://magic-spot.com/reset-password',
     });
     if (error) throw new Error(error.message);
   };
