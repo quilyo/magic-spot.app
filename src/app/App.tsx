@@ -33,7 +33,7 @@ function DeepLinkHandler() {
   useEffect(() => {
     let sub: any;
     const setup = async () => {
-      sub = await CapApp.addListener('appUrlOpen', (event) => {
+      sub = await CapApp.addListener('appUrlOpen', async (event) => {
         try {
           if (event.url.startsWith('magicspot://')) {
             navigate('/login');
@@ -41,7 +41,16 @@ function DeepLinkHandler() {
           }
           const url = new URL(event.url);
           if (url.pathname.startsWith('/reset-password')) {
-            navigate(`/reset-password${url.hash}`);
+            // Apply the recovery tokens so Supabase recognises the session
+            // before ResetPasswordPage mounts and checks for it
+            const params = new URLSearchParams(url.hash.substring(1));
+            const accessToken = params.get('access_token');
+            const refreshToken = params.get('refresh_token');
+            if (accessToken && refreshToken) {
+              const { supabase } = await import('@/utils/supabase/client');
+              await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+            }
+            navigate('/reset-password');
           } else if (url.pathname.startsWith('/email-confirmation')) {
             navigate(`/email-confirmation${url.hash}`);
           }
