@@ -1,6 +1,27 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { flushSync } from 'react-dom';
 import { supabase } from '@/utils/supabase/client';
+import { SocialLogin } from '@capgo/capacitor-social-login';
+
+// Google "Web application" OAuth client ID. On Android this is the serverClientId
+// the native account picker uses to mint an ID token whose audience Supabase verifies.
+// This same ID must be listed under Supabase → Auth → Providers → Google → Authorized Client IDs.
+const GOOGLE_WEB_CLIENT_ID = '26050107859-liv40t29nto551r02229ovj54akbl0sq.apps.googleusercontent.com';
+
+// Initialise the native Google plugin exactly once.
+let googleInitPromise: Promise<void> | null = null;
+function ensureGoogleInit(): Promise<void> {
+  if (!googleInitPromise) {
+    googleInitPromise = SocialLogin.initialize({
+      google: { webClientId: GOOGLE_WEB_CLIENT_ID },
+    }).catch((err) => {
+      // Reset so a later attempt can retry initialisation
+      googleInitPromise = null;
+      throw err;
+    });
+  }
+  return googleInitPromise;
+}
 
 export interface UserProfile {
   id: string;
@@ -16,6 +37,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<UserProfile>;
+  signInWithGoogle: () => Promise<UserProfile>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -198,6 +220,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const signInWithGoogle = async (): Promise<UserProfile> => {
+    console.log('[Auth] Google sign-in starting...');
+    setLoading(true);
+    try {
+      await ensureGoogleInit();
+
+      // NOTE: do NOT pass `scopes` here — requesting scopes triggers Google's
+      // authorization flow, which requires extra MainActivity wiring. Plain
+      // sign-in returns email + profile inside the ID token via Credential Manager.
+      const res: any = await SocialLogin.login({
+        provider: 'google',
+        options: {},
+      });
+
+      const idToken: string | undefined = res?.result?.idToken;
+      if (!idToken) {
+        throw new Error('Google did not return an ID token. Check the SHA-1 fingerprint and Web client ID configuration.');
+      }
+      console.log('[Auth] Got Google ID token, exchanging with Supabase...');
+
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: idToken,
+      });
+      if (error) throw new Error(error.message);
+      if (!data.user) throw new Error('No user data returned from Supabase');
+      console.log('[Auth] Supabase session established for', data.user.id);
+
+      const name =
+        data.user.user_metadata?.name ||
+        data.user.user_metadata?.full_name ||
+        res?.result?.profile?.name ||
+        '';
+
+      let profile: UserProfile;
+      try {
+        profile = await fetchUserProfile(data.user.id, data.user.email, name, data.user.phone);
+      } catch (err) {
+        console.error('[Auth] Profile fetch after Google sign-in failed, using minimal user:', err);
+        profile = {
+          id: data.user.id,
+          email: data.user.email || '',
+          name,
+          role: 'user',
+          created_at: new Date().toISOString(),
+        };
+      }
+
+      flushSync(() => {
+        setUser(profile);
+        setLoading(false);
+      });
+      return profile;
+    } catch (err) {
+      setLoading(false);
+      throw err;
+    }
+  };
+
   const signup = async (email: string, password: string, name: string) => {
     console.log('[Auth] Signing up...');
     const { data, error } = await supabase.auth.signUp({
@@ -256,6 +337,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated,
       isAdmin,
       login,
+      signInWithGoogle,
       signup,
       logout,
       resetPassword,

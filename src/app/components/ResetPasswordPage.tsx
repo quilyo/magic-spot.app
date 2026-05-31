@@ -5,7 +5,7 @@ import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { toast } from 'sonner';
-import { KeyRound, ArrowLeft, Check, Loader2, Smartphone } from 'lucide-react';
+import { KeyRound, ArrowLeft, Check, Loader2 } from 'lucide-react';
 import { supabase } from '@/utils/supabase/client';
 
 type ResetStep = 'request' | 'update' | 'done';
@@ -34,9 +34,13 @@ export function ResetPasswordPage() {
       }
     };
 
-    // Listen for PASSWORD_RECOVERY event
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
+    // Listen for the recovery session becoming available.
+    // PASSWORD_RECOVERY fires on web; on native the recovery deep link applies the
+    // session via setSession, which emits SIGNED_IN. Either one means "show update form".
+    // This also handles the warm case where the user is already on this page and taps
+    // the email link (the page doesn't remount, so the effect above won't re-run).
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
         setStep('update');
       }
     });
@@ -45,6 +49,13 @@ export function ResetPasswordPage() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // After a successful reset, send the user back to the login screen automatically.
+  useEffect(() => {
+    if (step !== 'done') return;
+    const t = setTimeout(() => navigate('/login'), 2500);
+    return () => clearTimeout(t);
+  }, [step, navigate]);
 
   const validatePassword = (password: string): string | null => {
     if (password.length < 8) return 'Password must be at least 8 characters long';
@@ -96,6 +107,9 @@ export function ResetPasswordPage() {
     setLoading(true);
     try {
       await updatePassword(newPassword);
+      // Sign out the temporary recovery session so the user logs in fresh
+      // with their new password.
+      try { await supabase.auth.signOut(); } catch {}
       setStep('done');
     } catch (error: any) {
       toast.error(error.message || 'Failed to update password');
@@ -115,22 +129,14 @@ export function ResetPasswordPage() {
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Password Updated!</h2>
             <p className="text-gray-500 text-sm mb-8">
-              Your password has been successfully updated. You can now log in to the app with your new password.
+              Your password has been successfully updated. Redirecting you to sign in…
             </p>
             <Button
-              onClick={() => { window.location.href = 'magicspot://login'; }}
-              className="w-full bg-gray-900 text-white hover:bg-gray-800 font-medium rounded-xl py-3 mb-3"
-            >
-              <Smartphone className="w-4 h-4 mr-2" />
-              Return to App
-            </Button>
-            <button
-              type="button"
               onClick={() => navigate('/login')}
-              className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
+              className="w-full bg-gray-900 text-white hover:bg-gray-800 font-medium rounded-xl py-3"
             >
-              Continue on web instead
-            </button>
+              Go to Sign In
+            </Button>
           </div>
         </div>
       </div>

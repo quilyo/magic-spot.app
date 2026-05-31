@@ -8,6 +8,7 @@ import { EmailConfirmationPage } from '@/app/components/EmailConfirmationPage';
 import { TermsPage } from '@/app/components/TermsPage';
 import { PrivacyPage } from '@/app/components/PrivacyPage';
 import { ParkingMap } from '@/app/components/ParkingMap';
+import { OnboardingTour, hasSeenOnboarding } from '@/app/components/OnboardingTour';
 import { ParkingData } from '@/app/types/parking';
 import * as api from '@/app/services/api';
 import { toast } from 'sonner';
@@ -24,6 +25,9 @@ import {
   MapPin,
   Bell,
   BellOff,
+  LocateFixed,
+  Navigation,
+  HelpCircle,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 
@@ -32,31 +36,48 @@ function DeepLinkHandler() {
   const navigate = useNavigate();
   useEffect(() => {
     let sub: any;
-    const setup = async () => {
-      sub = await CapApp.addListener('appUrlOpen', async (event) => {
-        try {
-          if (event.url.startsWith('magicspot://')) {
-            navigate('/login');
-            return;
+
+    // Shared handler so both the live event (warm) and the launch URL (cold start) are processed.
+    const handleUrl = async (rawUrl: string) => {
+      try {
+        if (rawUrl.startsWith('magicspot://')) {
+          navigate('/login');
+          return;
+        }
+        const url = new URL(rawUrl);
+        if (url.pathname.startsWith('/reset-password')) {
+          // Apply the recovery tokens so Supabase recognises the session
+          // before ResetPasswordPage mounts and checks for it
+          const params = new URLSearchParams(url.hash.substring(1));
+          const accessToken = params.get('access_token');
+          const refreshToken = params.get('refresh_token');
+          if (accessToken && refreshToken) {
+            const { supabase } = await import('@/utils/supabase/client');
+            await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
           }
-          const url = new URL(event.url);
-          if (url.pathname.startsWith('/reset-password')) {
-            // Apply the recovery tokens so Supabase recognises the session
-            // before ResetPasswordPage mounts and checks for it
-            const params = new URLSearchParams(url.hash.substring(1));
-            const accessToken = params.get('access_token');
-            const refreshToken = params.get('refresh_token');
-            if (accessToken && refreshToken) {
-              const { supabase } = await import('@/utils/supabase/client');
-              await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-            }
-            navigate('/reset-password');
-          } else if (url.pathname.startsWith('/email-confirmation')) {
-            navigate(`/email-confirmation${url.hash}`);
-          }
-        } catch {}
-      });
+          navigate('/reset-password');
+        } else if (url.pathname.startsWith('/email-confirmation')) {
+          navigate(`/email-confirmation${url.hash}`);
+        }
+      } catch {}
     };
+
+    const setup = async () => {
+      // Warm path: app already running when the link is tapped
+      sub = await CapApp.addListener('appUrlOpen', (event) => {
+        handleUrl(event.url);
+      });
+
+      // Cold-start path: the link launched the app. The appUrlOpen event fires
+      // before this listener is registered, so read the launch URL directly.
+      try {
+        const launch = await CapApp.getLaunchUrl();
+        if (launch?.url) {
+          handleUrl(launch.url);
+        }
+      } catch {}
+    };
+
     setup();
     return () => { sub?.remove(); };
   }, [navigate]);
@@ -91,6 +112,10 @@ function MapPage() {
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [mapResetTrigger, setMapResetTrigger] = useState(0);
+  const [locateTrigger, setLocateTrigger] = useState(0);
+  const [focusSpot, setFocusSpot] = useState<ParkingData['spots'][number] | null>(null);
+  const [focusTrigger, setFocusTrigger] = useState(0);
+  const [showOnboarding, setShowOnboarding] = useState(() => !hasSeenOnboarding());
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
@@ -198,6 +223,43 @@ function MapPage() {
     });
   };
 
+  // Recenter the map on the user's current location
+  const handleLocateMe = () => {
+    if (!userLocation) {
+      toast.error('Enable location to center the map on you');
+      return;
+    }
+    setLocateTrigger(p => p + 1);
+  };
+
+  // Find the nearest available spot to the user and open it
+  const handleFindNearest = () => {
+    const available = (parkingData?.spots || []).filter(
+      s => s.occupied !== 1 && s.lat && s.lon
+    );
+    if (available.length === 0) {
+      toast.error('No available spots right now');
+      return;
+    }
+    if (!userLocation) {
+      // Fallback: no location yet — just show all spots and prompt
+      toast.error('Enable location to find the spot nearest you');
+      setMapResetTrigger(p => p + 1);
+      return;
+    }
+    let nearest = available[0];
+    let nearestDist = distanceMeters(userLocation, { lat: nearest.lat, lon: nearest.lon });
+    for (const s of available) {
+      const d = distanceMeters(userLocation, { lat: s.lat, lon: s.lon });
+      if (d < nearestDist) { nearest = s; nearestDist = d; }
+    }
+    setFocusSpot(nearest);
+    setFocusTrigger(p => p + 1);
+    const meters = Math.round(nearestDist);
+    const dist = meters < 1000 ? `${meters} m away` : `${(meters / 1000).toFixed(1)} km away`;
+    toast.success(`Nearest available spot — ${dist}`);
+  };
+
   useEffect(() => {
     loadParkingData();
     const interval = setInterval(loadParkingData, 30000);
@@ -275,6 +337,9 @@ function MapPage() {
           resetTrigger={mapResetTrigger}
           isPreviewMode={false}
           userLocation={userLocation}
+          locateTrigger={locateTrigger}
+          focusSpot={focusSpot}
+          focusTrigger={focusTrigger}
         />
       </div>
 
@@ -342,6 +407,23 @@ function MapPage() {
         <div className="flex flex-col items-end gap-2">
           <div className="flex items-center gap-2">
             <Button
+              onClick={handleFindNearest}
+              size="sm"
+              title="Find the nearest available spot"
+              className="bg-green-600 text-white border border-green-700 hover:bg-green-700 font-medium shadow-lg rounded-xl"
+            >
+              <Navigation className="w-4 h-4" />
+              <span className="ml-2 hidden sm:inline">Nearest spot</span>
+            </Button>
+            <Button
+              onClick={handleLocateMe}
+              size="sm"
+              title="Center the map on my location"
+              className="bg-white/90 backdrop-blur-xl border border-white/60 text-gray-900 hover:bg-white font-medium shadow-lg rounded-xl"
+            >
+              <LocateFixed className="w-4 h-4" />
+            </Button>
+            <Button
               onClick={toggleAlerts}
               size="sm"
               title={alertsEnabled ? 'Disable spot alerts' : 'Enable spot alerts'}
@@ -392,6 +474,16 @@ function MapPage() {
         </div>
       </div>
 
+      {/* Help / replay tutorial */}
+      <button
+        onClick={() => setShowOnboarding(true)}
+        title="How MagicSpot works"
+        className="absolute z-[1500] bg-white/90 backdrop-blur-xl rounded-full p-2.5 shadow-lg border border-white/60 hover:bg-white transition-colors"
+        style={{ left: 'max(12px, env(safe-area-inset-left))', bottom: 'max(24px, env(safe-area-inset-bottom))' }}
+      >
+        <HelpCircle className="w-5 h-5 text-gray-900" />
+      </button>
+
       {/* Floating Logo */}
       <div className="absolute left-1/2 -translate-x-1/2 z-[1500]" style={{ bottom: 'max(24px, env(safe-area-inset-bottom))' }}>
         <button onClick={() => setMapResetTrigger((p) => p + 1)} className="bg-white/90 backdrop-blur-xl rounded-xl px-5 py-2.5 shadow-lg border border-white/60 flex items-center gap-2 hover:bg-white transition-colors">
@@ -401,6 +493,9 @@ function MapPage() {
           <span className="text-base font-bold text-gray-900">MagicSpot</span>
         </button>
       </div>
+
+      {/* First-time welcome tour */}
+      {showOnboarding && <OnboardingTour onClose={() => setShowOnboarding(false)} />}
 
       {/* Delete Modal */}
       {showDeleteModal && (

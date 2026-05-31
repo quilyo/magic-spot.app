@@ -11,9 +11,14 @@ interface ParkingMapProps {
   resetTrigger?: number;
   isPreviewMode?: boolean;
   userLocation?: { lat: number; lon: number } | null;
+  // Increment to recenter the map on the user's current location
+  locateTrigger?: number;
+  // Set a spot + increment focusTrigger to fly to it and open its popup
+  focusSpot?: ParkingSpot | null;
+  focusTrigger?: number;
 }
 
-export function ParkingMap({ spots, onSpotClick, availableCount = 0, occupiedCount = 0, resetTrigger = 0, isPreviewMode = false, userLocation = null }: ParkingMapProps) {
+export function ParkingMap({ spots, onSpotClick, availableCount = 0, occupiedCount = 0, resetTrigger = 0, isPreviewMode = false, userLocation = null, locateTrigger = 0, focusSpot = null, focusTrigger = 0 }: ParkingMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<any>(null);
   const markersRef = useRef<Map<string, any>>(new Map());
@@ -210,6 +215,31 @@ export function ParkingMap({ spots, onSpotClick, availableCount = 0, occupiedCou
     const bounds = L.latLngBounds(validSpots.map(s => [s.lat, s.lon]));
     leafletMapRef.current.fitBounds(bounds, { padding: [40, 40], animate: true, maxZoom: 20 });
   }, [leafletLoaded, resetTrigger]);
+
+  // Recenter on the user's current location when locateTrigger changes
+  const userLocationLatest = useRef(userLocation);
+  useEffect(() => { userLocationLatest.current = userLocation; }, [userLocation]);
+  useEffect(() => {
+    if (!leafletLoaded || locateTrigger === 0 || !leafletMapRef.current) return;
+    const loc = userLocationLatest.current;
+    if (!loc) return;
+    leafletMapRef.current.flyTo([loc.lat, loc.lon], 19, { animate: true });
+  }, [leafletLoaded, locateTrigger]);
+
+  // Fly to a specific spot and open its popup when focusTrigger changes
+  const focusSpotLatest = useRef(focusSpot);
+  useEffect(() => { focusSpotLatest.current = focusSpot; }, [focusSpot]);
+  useEffect(() => {
+    if (!leafletLoaded || focusTrigger === 0 || !leafletMapRef.current) return;
+    const spot = focusSpotLatest.current;
+    if (!spot) return;
+    leafletMapRef.current.flyTo([spot.lat, spot.lon], 20, { animate: true });
+    setSelectedSpot(null);
+    setTimeout(() => {
+      setSelectedSpot(spot);
+      if (onSpotClick) onSpotClick(spot);
+    }, 120);
+  }, [leafletLoaded, focusTrigger]);
 
   // Handle window resize + ResizeObserver for container size changes (e.g. after navigation)
   useEffect(() => {
