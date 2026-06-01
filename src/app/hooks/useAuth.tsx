@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 import { flushSync } from 'react-dom';
 import { supabase } from '@/utils/supabase/client';
 import { SocialLogin } from '@capgo/capacitor-social-login';
+import { Capacitor } from '@capacitor/core';
 
 // Google "Web application" OAuth client ID. On Android this is the serverClientId
 // the native account picker uses to mint an ID token whose audience Supabase verifies.
@@ -223,6 +224,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = async (): Promise<UserProfile> => {
     console.log('[Auth] Google sign-in starting...');
     setLoading(true);
+
+    // ── WEB: use Supabase's hosted OAuth redirect flow ──────────────────────
+    // The native Social Login plugin falls back to Google Identity Services on
+    // the web, which sends redirect_uri = the current page (e.g.
+    // https://magic-spot.com/login) to Google — causing redirect_uri_mismatch.
+    // On the web we instead hand off to Supabase, whose redirect_uri is the
+    // registered https://<project>.supabase.co/auth/v1/callback URL. Supabase
+    // then returns the user to `redirectTo` below.
+    if (!Capacitor.isNativePlatform()) {
+      try {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: `${window.location.origin}/login`,
+          },
+        });
+        if (error) {
+          setLoading(false);
+          throw new Error(error.message);
+        }
+        // The browser is now navigating to Google. This promise intentionally
+        // never resolves so the caller doesn't flash a success/error toast
+        // before the redirect happens. Session is picked up on return via the
+        // onAuthStateChange listener.
+        return new Promise<UserProfile>(() => {});
+      } catch (err) {
+        setLoading(false);
+        throw err;
+      }
+    }
+
+    // ── NATIVE (Android / iOS): Credential Manager → ID token → Supabase ─────
     try {
       await ensureGoogleInit();
 
