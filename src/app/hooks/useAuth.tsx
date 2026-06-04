@@ -8,21 +8,44 @@ import { Capacitor } from '@capacitor/core';
 // the native account picker uses to mint an ID token whose audience Supabase verifies.
 // This same ID must be listed under Supabase → Auth → Providers → Google → Authorized Client IDs.
 const GOOGLE_WEB_CLIENT_ID = '26050107859-liv40t29nto551r02229ovj54akbl0sq.apps.googleusercontent.com';
+const GOOGLE_IOS_CLIENT_ID = '26050107859-mpppgsd9l1gibi4jb7cvsllrd0lpd6hp.apps.googleusercontent.com';
 
-// Initialise the native Google plugin exactly once.
-let googleInitPromise: Promise<void> | null = null;
-function ensureGoogleInit(): Promise<void> {
-  if (!googleInitPromise) {
-    googleInitPromise = SocialLogin.initialize({
-      google: { webClientId: GOOGLE_WEB_CLIENT_ID },
+// Google embeds the nonce we give the plugin into the ID token's `nonce` claim
+// unmodified, while Supabase/GoTrue SHA-256-hashes the nonce we send it before
+// comparing. So we hand the plugin the HASHED value and Supabase the RAW value:
+// token.nonce = hashed, and GoTrue computes sha256(raw) == hashed → match.
+async function generateNonce(): Promise<{ raw: string; hashed: string }> {
+  const raw = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+  const hashed = Array.from(new Uint8Array(digest))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  return { raw, hashed };
+}
+
+// Initialise the native social-login plugin exactly once. Both Google and Apple
+// must be declared here — the plugin only wires up a provider that appears in this
+// call, otherwise login() rejects with "No provider was initialized". Passing an
+// empty `apple` object selects the native flow (returns an idToken to JS, no
+// backend redirect exchange).
+let socialInitPromise: Promise<void> | null = null;
+function ensureSocialInit(): Promise<void> {
+  if (!socialInitPromise) {
+    socialInitPromise = SocialLogin.initialize({
+      google: { webClientId: GOOGLE_WEB_CLIENT_ID, iOSClientId: GOOGLE_IOS_CLIENT_ID },
+      apple: {},
     }).catch((err) => {
       // Reset so a later attempt can retry initialisation
-      googleInitPromise = null;
+      socialInitPromise = null;
       throw err;
     });
   }
-  return googleInitPromise;
+  return socialInitPromise;
 }
+
+export const isAppleSignInAvailable = () => Capacitor.getPlatform() === 'ios';
 
 export interface UserProfile {
   id: string;
@@ -39,6 +62,7 @@ interface AuthContextType {
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<UserProfile>;
   signInWithGoogle: () => Promise<UserProfile>;
+  signInWithApple: () => Promise<UserProfile>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -257,14 +281,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // ── NATIVE (Android / iOS): Credential Manager → ID token → Supabase ─────
     try {
-      await ensureGoogleInit();
+      await ensureSocialInit();
+
+      // Sign out of Google first so the plugin does a FRESH sign-in. Otherwise its
+      // restorePreviousSignIn path returns a cached/refreshed token whose nonce
+      // claim is from an earlier session and won't match the one we send Supabase.
+      try { await SocialLogin.logout({ provider: 'google' }); } catch {}
+
+      const { raw: nonce, hashed: hashedNonce } = await generateNonce();
 
       // NOTE: do NOT pass `scopes` here — requesting scopes triggers Google's
       // authorization flow, which requires extra MainActivity wiring. Plain
       // sign-in returns email + profile inside the ID token via Credential Manager.
       const res: any = await SocialLogin.login({
         provider: 'google',
-        options: {},
+        options: { nonce: hashedNonce },
       });
 
       const idToken: string | undefined = res?.result?.idToken;
@@ -276,6 +307,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
         token: idToken,
+        nonce,
       });
       if (error) throw new Error(error.message);
       if (!data.user) throw new Error('No user data returned from Supabase');
@@ -292,6 +324,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile = await fetchUserProfile(data.user.id, data.user.email, name, data.user.phone);
       } catch (err) {
         console.error('[Auth] Profile fetch after Google sign-in failed, using minimal user:', err);
+        profile = {
+          id: data.user.id,
+          email: data.user.email || '',
+          name,
+          role: 'user',
+          created_at: new Date().toISOString(),
+        };
+      }
+
+      flushSync(() => {
+        setUser(profile);
+        setLoading(false);
+      });
+      return profile;
+    } catch (err) {
+      setLoading(false);
+      throw err;
+    }
+  };
+
+  const signInWithApple = async (): Promise<UserProfile> => {
+    console.log('[Auth] Apple sign-in starting...');
+    setLoading(true);
+    try {
+      await ensureSocialInit();
+
+      // Same nonce convention as Google: Apple embeds our hashed nonce in the token,
+      // Supabase hashes the raw nonce we send and compares the two.
+      const { raw: nonce, hashed: hashedNonce } = await generateNonce();
+
+      const res: any = await SocialLogin.login({
+        provider: 'apple',
+        options: { scopes: ['email', 'name'], nonce: hashedNonce },
+      });
+
+      const idToken: string | undefined = res?.result?.idToken;
+      if (!idToken) {
+        throw new Error('Apple did not return an ID token. Check the Sign in with Apple capability and Supabase Apple provider configuration.');
+      }
+      console.log('[Auth] Got Apple ID token, exchanging with Supabase...');
+
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: idToken,
+        nonce,
+      });
+      if (error) throw new Error(error.message);
+      if (!data.user) throw new Error('No user data returned from Supabase');
+      console.log('[Auth] Supabase session established for', data.user.id);
+
+      // Apple only returns the user's name on the FIRST sign-in ever, so prefer the
+      // plugin's profile fields and fall back to whatever Supabase already stored.
+      const p = res?.result?.profile;
+      const appleName = [p?.givenName, p?.familyName].filter(Boolean).join(' ').trim();
+      const name =
+        appleName ||
+        data.user.user_metadata?.name ||
+        data.user.user_metadata?.full_name ||
+        '';
+
+      let profile: UserProfile;
+      try {
+        profile = await fetchUserProfile(data.user.id, data.user.email, name, data.user.phone);
+      } catch (err) {
+        console.error('[Auth] Profile fetch after Apple sign-in failed, using minimal user:', err);
         profile = {
           id: data.user.id,
           email: data.user.email || '',
@@ -371,6 +468,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin,
       login,
       signInWithGoogle,
+      signInWithApple,
       signup,
       logout,
       resetPassword,
