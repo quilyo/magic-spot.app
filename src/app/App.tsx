@@ -8,6 +8,8 @@ import { EmailConfirmationPage } from '@/app/components/EmailConfirmationPage';
 import { TermsPage } from '@/app/components/TermsPage';
 import { PrivacyPage } from '@/app/components/PrivacyPage';
 import { ParkingMap } from '@/app/components/ParkingMap';
+import { AppDownloadPage } from '@/app/components/AppDownloadPage';
+import { LandingPage } from '@/app/components/LandingPage';
 import { OnboardingTour, hasSeenOnboarding } from '@/app/components/OnboardingTour';
 import { ParkingData } from '@/app/types/parking';
 import * as api from '@/app/services/api';
@@ -534,7 +536,9 @@ export default function App() {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
-          <Route path="/" element={<AuthGate><MapPage /></AuthGate>} />
+          <Route path="/app-download" element={<AppDownloadPage />} />
+          <Route path="/map" element={<AuthGate><MapPage /></AuthGate>} />
+          <Route path="/" element={<LandingPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

@@ -1,35 +1,68 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, isAppleSignInAvailable } from '@/app/hooks/useAuth';
 import { supabase } from '@/utils/supabase/client';
-import { Button } from '@/app/components/ui/button';
-import { Input } from '@/app/components/ui/input';
-import { Label } from '@/app/components/ui/label';
-import { Checkbox } from '@/app/components/ui/checkbox';
 import { toast } from 'sonner';
-import { MapPin, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 const REMEMBERED_EMAIL_KEY = 'magicspot_remembered_email';
 const KEEP_LOGGED_IN_KEY = 'magicspot_keep_logged_in';
 
+const inp = {
+  width: '100%',
+  background: '#272727',
+  border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: '12px',
+  padding: '12px 16px',
+  color: '#F0EDE8',
+  fontSize: '14px',
+  fontFamily: "'DM Sans', sans-serif",
+  outline: 'none',
+} as const;
+
+const lbl = {
+  display: 'block',
+  fontSize: '11px',
+  fontWeight: 500,
+  color: '#9A9087',
+  marginBottom: '6px',
+  letterSpacing: '0.5px',
+  textTransform: 'uppercase',
+} as const;
+
+const primaryBtn = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '8px',
+  width: '100%',
+  padding: '14px 24px',
+  borderRadius: '12px',
+  background: '#E8281E',
+  color: '#fff',
+  border: 'none',
+  cursor: 'pointer',
+  fontSize: '15px',
+  fontWeight: 600,
+  fontFamily: "'DM Sans', sans-serif",
+  boxShadow: '0 0 24px rgba(232,40,30,0.25)',
+  transition: 'background 0.2s',
+} as const;
+
 export function LoginPage() {
-  // ── shared ───────────────────────────────────────────────────────────────
   const [isSignup, setIsSignup] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // ── sign-in ───────────────────────────────────────────────────────────────
   const [siEmail, setSiEmail] = useState('');
   const [siPassword, setSiPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
 
-  // ── sign-up ───────────────────────────────────────────────────────────────
   const [suName, setSuName] = useState('');
   const [suEmail, setSuEmail] = useState('');
   const [suPassword, setSuPassword] = useState('');
   const [suConfirmPassword, setSuConfirmPassword] = useState('');
   const [suTerms, setSuTerms] = useState(false);
 
-  // ── email OTP confirmation step ───────────────────────────────────────────
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState('');
   const [pendingEmail, setPendingEmail] = useState('');
@@ -37,77 +70,17 @@ export function LoginPage() {
   const { login, signInWithGoogle, signInWithApple, isAuthenticated, loading: authLoading, refreshProfile } = useAuth();
   const showApple = isAppleSignInAvailable();
   const navigate = useNavigate();
-  const mapBgRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
 
-  // ── decorative background map ─────────────────────────────────────────────
   useEffect(() => {
-    const tryInit = () => {
-      const L = (window as any).L;
-      if (!L || !mapBgRef.current || mapInstanceRef.current) return;
-      mapInstanceRef.current = L.map(mapBgRef.current, {
-        center: [40.7923, -73.9369],
-        zoom: 17,
-        zoomControl: false,
-        scrollWheelZoom: false,
-        dragging: false,
-        touchZoom: false,
-        doubleClickZoom: false,
-        keyboard: false,
-        attributionControl: false,
-      });
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 20,
-      }).addTo(mapInstanceRef.current);
-    };
-
-    if ((window as any).L) {
-      tryInit();
-    } else {
-      if (!document.querySelector('link[href*="leaflet.css"]')) {
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-        link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
-        link.crossOrigin = '';
-        document.head.appendChild(link);
-      }
-      if (!document.querySelector('script[src*="leaflet.js"]')) {
-        const script = document.createElement('script');
-        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-        script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
-        script.crossOrigin = '';
-        script.onload = tryInit;
-        document.head.appendChild(script);
-      }
-    }
-
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
-    };
-  }, []);
-
-  // ── redirect if already authenticated ────────────────────────────────────
-  useEffect(() => {
-    if (isAuthenticated && !authLoading) {
-      navigate('/', { replace: true });
-    }
+    if (isAuthenticated && !authLoading) navigate('/map', { replace: true });
   }, [isAuthenticated, authLoading, navigate]);
 
-  // ── restore remembered email ──────────────────────────────────────────────
   useEffect(() => {
     const savedEmail = localStorage.getItem(REMEMBERED_EMAIL_KEY);
     const keepLoggedIn = localStorage.getItem(KEEP_LOGGED_IN_KEY);
-    if (savedEmail && keepLoggedIn === 'true') {
-      setSiEmail(savedEmail);
-      setRememberMe(true);
-    }
+    if (savedEmail && keepLoggedIn === 'true') { setSiEmail(savedEmail); setRememberMe(true); }
   }, []);
 
-  // ── helpers ───────────────────────────────────────────────────────────────
   const validatePassword = (p: string): string | null => {
     if (p.length < 8) return 'Password must be at least 8 characters';
     if (!/[A-Z]/.test(p)) return 'Password must contain an uppercase letter';
@@ -116,17 +89,13 @@ export function LoginPage() {
     return null;
   };
 
-  const redirectAfterAuth = (_profile: any) => {
-    navigate('/', { replace: true });
-  };
+  const redirectAfterAuth = (_profile: any) => navigate('/map', { replace: true });
 
-  // ── sign-in ───────────────────────────────────────────────────────────────
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!siEmail || !siPassword) { toast.error('Enter email and password'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(siEmail)) { toast.error('Enter a valid email address'); return; }
     if (siPassword.length < 6) { toast.error('Password must be at least 6 characters'); return; }
-
     setLoading(true);
     try {
       if (rememberMe) {
@@ -146,7 +115,6 @@ export function LoginPage() {
     }
   };
 
-  // ── Google sign-in ────────────────────────────────────────────────────────
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
@@ -155,18 +123,12 @@ export function LoginPage() {
       redirectAfterAuth(profile);
     } catch (err: any) {
       const msg = String(err?.message || '');
-      // The user closing the native sheet should not look like an error
-      if (/cancel|canceled|cancelled|dismiss|13:|user/i.test(msg)) {
-        // silently ignore user-cancelled sign-in
-      } else {
-        toast.error(msg || 'Google sign-in failed');
-      }
+      if (!/cancel|canceled|cancelled|dismiss|13:|user/i.test(msg)) toast.error(msg || 'Google sign-in failed');
     } finally {
       setLoading(false);
     }
   };
 
-  // ── Apple sign-in ─────────────────────────────────────────────────────────
   const handleAppleSignIn = async () => {
     setLoading(true);
     try {
@@ -175,18 +137,12 @@ export function LoginPage() {
       redirectAfterAuth(profile);
     } catch (err: any) {
       const msg = String(err?.message || '');
-      // The user closing the native sheet should not look like an error
-      if (/cancel|canceled|cancelled|dismiss|1001|user/i.test(msg)) {
-        // silently ignore user-cancelled sign-in
-      } else {
-        toast.error(msg || 'Apple sign-in failed');
-      }
+      if (!/cancel|canceled|cancelled|dismiss|1001|user/i.test(msg)) toast.error(msg || 'Apple sign-in failed');
     } finally {
       setLoading(false);
     }
   };
 
-  // ── sign-up: submit → sends 6-digit code to email ─────────────────────────
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!suName.trim()) { toast.error('Please enter your name'); return; }
@@ -196,7 +152,6 @@ export function LoginPage() {
     if (pwErr) { toast.error(pwErr); return; }
     if (suPassword !== suConfirmPassword) { toast.error('Passwords do not match'); return; }
     if (!suTerms) { toast.error('Please agree to the Terms and Conditions'); return; }
-
     setLoading(true);
     try {
       const { error } = await supabase.auth.signUp({
@@ -215,18 +170,12 @@ export function LoginPage() {
     }
   };
 
-  // ── sign-up: verify 6-digit email code ───────────────────────────────────
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (otp.length !== 6) { toast.error('Enter the 6-digit code'); return; }
-
     setLoading(true);
     try {
-      const { error } = await supabase.auth.verifyOtp({
-        email: pendingEmail,
-        token: otp,
-        type: 'signup',
-      });
+      const { error } = await supabase.auth.verifyOtp({ email: pendingEmail, token: otp, type: 'signup' });
       if (error) throw error;
       const profile = await refreshProfile();
       toast.success('Account confirmed! Welcome to MagicSpot.');
@@ -238,344 +187,225 @@ export function LoginPage() {
     }
   };
 
-  // ── reset helpers ─────────────────────────────────────────────────────────
   const goToSignIn = () => {
     setIsSignup(false);
     setSuName(''); setSuEmail(''); setSuPassword(''); setSuConfirmPassword(''); setSuTerms(false);
     setOtpSent(false); setOtp(''); setPendingEmail('');
   };
 
-  const goToSignUp = () => {
-    setIsSignup(true);
-  };
-
-  // ── render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
-      {/* Blurred map background */}
-      <div
-        className="absolute inset-0"
-        style={{ filter: 'blur(6px)', transform: 'scale(1.08)' }}
-      >
-        <div ref={mapBgRef} style={{ width: '100%', height: '100%' }} />
-      </div>
-      {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black/50" />
+    <div style={{
+      minHeight: '100vh',
+      background: '#0A0A0A',
+      fontFamily: "'DM Sans', sans-serif",
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '24px 16px',
+      position: 'relative',
+      overflow: 'hidden',
+    }}>
+      {/* Red ambient glow */}
+      <div style={{
+        position: 'fixed', inset: 0,
+        background: 'radial-gradient(ellipse 70% 50% at 50% -5%, rgba(232,40,30,0.15) 0%, transparent 65%), radial-gradient(ellipse 40% 30% at 85% 90%, rgba(232,40,30,0.06) 0%, transparent 60%)',
+        pointerEvents: 'none',
+      }} />
 
-      <div className="relative z-10 w-full max-w-md">
-        <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/60 p-8">
+      <div style={{
+        position: 'relative', zIndex: 1,
+        width: '100%', maxWidth: '440px',
+        background: '#1E1E1E',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: '24px',
+        padding: 'clamp(32px,6vw,48px) clamp(24px,8vw,40px)',
+        boxShadow: '0 0 0 1px rgba(232,40,30,0.08), 0 40px 100px rgba(0,0,0,0.6)',
+      }}>
 
-          {/* Logo */}
-          <div className="flex items-center justify-center gap-2 mb-6">
-            <div className="w-10 h-10 bg-gray-900 rounded-xl flex items-center justify-center">
-              <MapPin className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold text-gray-900">MagicSpot</span>
-          </div>
-
-          {/* Sign In / Sign Up toggle — hidden during OTP step */}
-          {!otpSent && (
-            <div className="flex rounded-xl border border-gray-200 p-1 mb-6 bg-gray-50">
-              <button
-                type="button"
-                onClick={goToSignIn}
-                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  !isSignup ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Sign In
-              </button>
-              <button
-                type="button"
-                onClick={goToSignUp}
-                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  isSignup ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Sign Up
-              </button>
-            </div>
-          )}
-
-          {/* ══ APPLE SIGN-IN (iOS only) ════════════════════════════════════ */}
-          {!otpSent && showApple && (
-            <div className="mb-3">
-              <Button
-                type="button"
-                onClick={handleAppleSignIn}
-                disabled={loading}
-                className="w-full bg-black text-white hover:bg-black/90 font-semibold rounded-xl py-3 text-base shadow-sm flex items-center justify-center gap-3"
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <svg className="w-5 h-5" viewBox="0 0 384 512" fill="currentColor" aria-hidden="true">
-                    <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
-                  </svg>
-                )}
-                Continue with Apple
-              </Button>
-            </div>
-          )}
-
-          {/* ══ GOOGLE SIGN-IN ══════════════════════════════════════════════ */}
-          {!otpSent && (
-            <div className="mb-5">
-              <Button
-                type="button"
-                onClick={handleGoogleSignIn}
-                disabled={loading}
-                variant="outline"
-                className="w-full bg-white text-gray-700 border-gray-300 hover:bg-gray-50 font-semibold rounded-xl py-3 text-base shadow-sm flex items-center justify-center gap-3"
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <svg className="w-5 h-5" viewBox="0 0 48 48" aria-hidden="true">
-                    <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>
-                    <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/>
-                    <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/>
-                    <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571.001-.001.002-.001.003-.002l6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/>
-                  </svg>
-                )}
-                Continue with Google
-              </Button>
-
-              <div className="flex items-center gap-3 mt-5">
-                <div className="flex-1 h-px bg-gray-200" />
-                <span className="text-xs text-gray-400 font-medium">or</span>
-                <div className="flex-1 h-px bg-gray-200" />
-              </div>
-            </div>
-          )}
-
-          {/* ══ OTP CONFIRMATION ════════════════════════════════════════════ */}
-          {otpSent && (
-            <form onSubmit={handleVerifyOtp} className="space-y-5">
-              <div className="text-center mb-2">
-                <div className="text-4xl mb-3">📧</div>
-                <h2 className="text-lg font-bold text-gray-900">Check your email</h2>
-                <p className="text-sm text-gray-500 mt-1">
-                  We sent a 6-digit code to{' '}
-                  <span className="font-semibold text-gray-900">{pendingEmail}</span>
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="otp" className="text-gray-700 font-medium text-sm">Confirmation Code</Label>
-                <Input
-                  id="otp"
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="123456"
-                  maxLength={6}
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                  className="mt-1 rounded-xl text-center text-2xl tracking-widest font-bold"
-                  disabled={loading}
-                  autoFocus
-                />
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full bg-gray-900 text-white hover:bg-gray-800 font-semibold rounded-xl py-3 text-base shadow-lg"
-                disabled={loading}
-              >
-                {loading
-                  ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Verifying...</>
-                  : 'Confirm Account'}
-              </Button>
-
-              <div className="text-center space-y-2">
-                <p className="text-xs text-gray-400">Didn't receive it? Check your spam folder.</p>
-                <button
-                  type="button"
-                  onClick={() => { setOtpSent(false); setOtp(''); }}
-                  className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
-                >
-                  ← Use a different email
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* ══ SIGN IN ════════════════════════════════════════════════════ */}
-          {!otpSent && !isSignup && (
-            <form onSubmit={handleSignIn} className="space-y-4">
-              <div>
-                <Label htmlFor="siEmail" className="text-gray-700 font-medium text-sm">Email</Label>
-                <Input
-                  id="siEmail"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={siEmail}
-                  onChange={(e) => setSiEmail(e.target.value)}
-                  className="mt-1 rounded-xl"
-                  disabled={loading}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="siPassword" className="text-gray-700 font-medium text-sm">Password</Label>
-                <Input
-                  id="siPassword"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={siPassword}
-                  onChange={(e) => setSiPassword(e.target.value)}
-                  className="mt-1 rounded-xl"
-                  disabled={loading}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="rememberMe"
-                    checked={rememberMe}
-                    onCheckedChange={(c) => setRememberMe(c as boolean)}
-                    disabled={loading}
-                  />
-                  <Label htmlFor="rememberMe" className="text-sm text-gray-600 cursor-pointer">
-                    Keep me logged in
-                  </Label>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => navigate('/reset-password')}
-                  className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
-                >
-                  Forgot password?
-                </button>
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full bg-gray-900 text-white hover:bg-gray-800 font-semibold rounded-xl py-3 text-base shadow-lg"
-                disabled={loading}
-              >
-                {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Signing in...</> : 'Sign In'}
-              </Button>
-            </form>
-          )}
-
-          {/* ══ SIGN UP ════════════════════════════════════════════════════ */}
-          {!otpSent && isSignup && (
-            <form onSubmit={handleSignUp} className="space-y-4">
-              <div>
-                <Label htmlFor="suName" className="text-gray-700 font-medium text-sm">Full Name</Label>
-                <Input
-                  id="suName"
-                  type="text"
-                  placeholder="Enter your name"
-                  value={suName}
-                  onChange={(e) => setSuName(e.target.value)}
-                  className="mt-1 rounded-xl"
-                  disabled={loading}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="suEmail" className="text-gray-700 font-medium text-sm">Email</Label>
-                <Input
-                  id="suEmail"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={suEmail}
-                  onChange={(e) => setSuEmail(e.target.value)}
-                  className="mt-1 rounded-xl"
-                  disabled={loading}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="suPassword" className="text-gray-700 font-medium text-sm">Password</Label>
-                <Input
-                  id="suPassword"
-                  type="password"
-                  placeholder="Min 8 chars, uppercase, lowercase, number"
-                  value={suPassword}
-                  onChange={(e) => setSuPassword(e.target.value)}
-                  className="mt-1 rounded-xl"
-                  disabled={loading}
-                />
-                {suPassword && (
-                  <div className="mt-2 text-xs space-y-1">
-                    <div className={suPassword.length >= 8 ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                      {suPassword.length >= 8 ? '✓' : '○'} At least 8 characters
-                    </div>
-                    <div className={/[A-Z]/.test(suPassword) ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                      {/[A-Z]/.test(suPassword) ? '✓' : '○'} One uppercase letter
-                    </div>
-                    <div className={/[a-z]/.test(suPassword) ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                      {/[a-z]/.test(suPassword) ? '✓' : '○'} One lowercase letter
-                    </div>
-                    <div className={/[0-9]/.test(suPassword) ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                      {/[0-9]/.test(suPassword) ? '✓' : '○'} One number
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="suConfirmPassword" className="text-gray-700 font-medium text-sm">Confirm Password</Label>
-                <Input
-                  id="suConfirmPassword"
-                  type="password"
-                  placeholder="Re-enter your password"
-                  value={suConfirmPassword}
-                  onChange={(e) => setSuConfirmPassword(e.target.value)}
-                  className="mt-1 rounded-xl"
-                  disabled={loading}
-                />
-              </div>
-
-              <div className="flex items-start space-x-2 p-3 border border-gray-200 rounded-xl bg-gray-50/50">
-                <Checkbox
-                  id="suTerms"
-                  checked={suTerms}
-                  onCheckedChange={(c) => setSuTerms(c as boolean)}
-                  disabled={loading}
-                  className="mt-0.5 flex-shrink-0"
-                />
-                <Label htmlFor="suTerms" className="text-xs text-gray-600 cursor-pointer leading-relaxed">
-                  I agree to the{' '}
-                  <button
-                    type="button"
-                    onClick={() => navigate('/terms')}
-                    className="text-blue-600 hover:underline font-medium"
-                  >
-                    Terms and Conditions
-                  </button>{' '}
-                  and{' '}
-                  <button
-                    type="button"
-                    onClick={() => navigate('/privacy')}
-                    className="text-blue-600 hover:underline font-medium"
-                  >
-                    Privacy Policy
-                  </button>.
-                </Label>
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full bg-gray-900 text-white hover:bg-gray-800 font-semibold rounded-xl py-3 text-base shadow-lg shadow-gray-900/20"
-                disabled={loading}
-              >
-                {loading
-                  ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating account...</>
-                  : 'Create Account'}
-              </Button>
-            </form>
-          )}
-
-          <div className="mt-6 text-center text-xs text-gray-400">
-            MagicSpot — Real-time Parking Monitoring
+        {/* Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '14px', marginBottom: '28px' }}>
+          <img src="/logo.png" alt="MagicSpot" style={{ width: '52px', height: '52px', borderRadius: '13px', objectFit: 'contain', boxShadow: '0 0 24px rgba(232,40,30,0.3)' }} />
+          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '36px', letterSpacing: '3px', color: '#F0EDE8', lineHeight: 1 }}>
+            Magic<span style={{ color: '#E8281E' }}>Spot</span>
           </div>
         </div>
+
+        {/* Sign In / Sign Up toggle */}
+        {!otpSent && (
+          <div style={{ display: 'flex', background: '#272727', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '4px', marginBottom: '24px' }}>
+            {(['Sign In', 'Sign Up'] as const).map((label) => {
+              const active = label === 'Sign In' ? !isSignup : isSignup;
+              return (
+                <button key={label} type="button"
+                  onClick={label === 'Sign In' ? goToSignIn : () => setIsSignup(true)}
+                  style={{
+                    flex: 1, padding: '10px', borderRadius: '9px', border: 'none', cursor: 'pointer',
+                    fontSize: '14px', fontWeight: 600, fontFamily: "'DM Sans', sans-serif",
+                    transition: 'all 0.2s',
+                    background: active ? '#E8281E' : 'transparent',
+                    color: active ? '#fff' : '#9A9087',
+                    boxShadow: active ? '0 2px 12px rgba(232,40,30,0.3)' : 'none',
+                  }}
+                >{label}</button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Apple */}
+        {!otpSent && showApple && (
+          <button type="button" onClick={handleAppleSignIn} disabled={loading}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', width: '100%', padding: '13px 20px', borderRadius: '12px', background: '#000', color: '#fff', border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer', fontSize: '14px', fontWeight: 600, fontFamily: "'DM Sans', sans-serif", marginBottom: '10px', opacity: loading ? 0.5 : 1 }}>
+            {loading ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : (
+              <svg width="18" height="18" viewBox="0 0 384 512" fill="currentColor"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg>
+            )}
+            Continue with Apple
+          </button>
+        )}
+
+        {/* Google */}
+        {!otpSent && (
+          <div style={{ marginBottom: '20px' }}>
+            <button type="button" onClick={handleGoogleSignIn} disabled={loading}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', width: '100%', padding: '13px 20px', borderRadius: '12px', background: '#272727', color: '#F0EDE8', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer', fontSize: '14px', fontWeight: 600, fontFamily: "'DM Sans', sans-serif", opacity: loading ? 0.5 : 1 }}>
+              {loading ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : (
+                <svg width="18" height="18" viewBox="0 0 48 48">
+                  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                </svg>
+              )}
+              Continue with Google
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '20px' }}>
+              <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+              <span style={{ fontSize: '11px', color: '#9A9087', letterSpacing: '1px', textTransform: 'uppercase' as const }}>or</span>
+              <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+            </div>
+          </div>
+        )}
+
+        {/* OTP */}
+        {otpSent && (
+          <form onSubmit={handleVerifyOtp} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '4px' }}>
+              <div style={{ fontSize: '36px', marginBottom: '10px' }}>📧</div>
+              <div style={{ fontSize: '17px', fontWeight: 600, color: '#F0EDE8' }}>Check your email</div>
+              <div style={{ fontSize: '13px', color: '#9A9087', marginTop: '6px' }}>
+                We sent a 6-digit code to{' '}
+                <span style={{ color: '#F0EDE8', fontWeight: 600 }}>{pendingEmail}</span>
+              </div>
+            </div>
+            <div>
+              <label style={lbl}>Confirmation Code</label>
+              <input type="text" inputMode="numeric" placeholder="123456" maxLength={6}
+                value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
+                style={{ ...inp, textAlign: 'center', fontSize: '24px', letterSpacing: '8px', fontWeight: 700 }}
+                disabled={loading} autoFocus />
+            </div>
+            <button type="submit" disabled={loading} style={{ ...primaryBtn, opacity: loading ? 0.5 : 1 }}>
+              {loading ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Verifying…</> : 'Confirm Account'}
+            </button>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '12px', color: '#9A9087', marginBottom: '6px' }}>Didn't receive it? Check your spam folder.</div>
+              <button type="button" onClick={() => { setOtpSent(false); setOtp(''); }}
+                style={{ fontSize: '13px', color: '#9A9087', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+                ← Use a different email
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Sign In */}
+        {!otpSent && !isSignup && (
+          <form onSubmit={handleSignIn} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <label style={lbl}>Email</label>
+              <input type="email" placeholder="Enter your email" value={siEmail}
+                onChange={e => setSiEmail(e.target.value)} style={inp} disabled={loading} />
+            </div>
+            <div>
+              <label style={lbl}>Password</label>
+              <input type="password" placeholder="Enter your password" value={siPassword}
+                onChange={e => setSiPassword(e.target.value)} style={inp} disabled={loading} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)}
+                  disabled={loading} style={{ accentColor: '#E8281E', width: '15px', height: '15px' }} />
+                <span style={{ fontSize: '13px', color: '#9A9087' }}>Keep me logged in</span>
+              </label>
+              <button type="button" onClick={() => navigate('/reset-password')}
+                style={{ fontSize: '13px', fontWeight: 500, color: '#E8281E', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+                Forgot password?
+              </button>
+            </div>
+            <button type="submit" disabled={loading} style={{ ...primaryBtn, opacity: loading ? 0.5 : 1 }}>
+              {loading ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Signing in…</> : 'Sign In'}
+            </button>
+          </form>
+        )}
+
+        {/* Sign Up */}
+        {!otpSent && isSignup && (
+          <form onSubmit={handleSignUp} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div>
+              <label style={lbl}>Full Name</label>
+              <input type="text" placeholder="Enter your name" value={suName}
+                onChange={e => setSuName(e.target.value)} style={inp} disabled={loading} />
+            </div>
+            <div>
+              <label style={lbl}>Email</label>
+              <input type="email" placeholder="Enter your email" value={suEmail}
+                onChange={e => setSuEmail(e.target.value)} style={inp} disabled={loading} />
+            </div>
+            <div>
+              <label style={lbl}>Password</label>
+              <input type="password" placeholder="Min 8 chars, uppercase, lowercase, number" value={suPassword}
+                onChange={e => setSuPassword(e.target.value)} style={inp} disabled={loading} />
+              {suPassword && (
+                <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                  {([
+                    [suPassword.length >= 8, 'At least 8 characters'],
+                    [/[A-Z]/.test(suPassword), 'One uppercase letter'],
+                    [/[a-z]/.test(suPassword), 'One lowercase letter'],
+                    [/[0-9]/.test(suPassword), 'One number'],
+                  ] as [boolean, string][]).map(([ok, label]) => (
+                    <div key={label} style={{ fontSize: '12px', color: ok ? '#22C55E' : '#9A9087' }}>
+                      {ok ? '✓' : '○'} {label}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <label style={lbl}>Confirm Password</label>
+              <input type="password" placeholder="Re-enter your password" value={suConfirmPassword}
+                onChange={e => setSuConfirmPassword(e.target.value)} style={inp} disabled={loading} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', background: '#272727', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', padding: '12px' }}>
+              <input type="checkbox" id="suTerms" checked={suTerms} onChange={e => setSuTerms(e.target.checked)}
+                disabled={loading} style={{ accentColor: '#E8281E', width: '15px', height: '15px', marginTop: '1px', flexShrink: 0 }} />
+              <label htmlFor="suTerms" style={{ fontSize: '12px', color: '#9A9087', lineHeight: 1.6, cursor: 'pointer' }}>
+                I agree to the{' '}
+                <button type="button" onClick={() => navigate('/terms')} style={{ color: '#E8281E', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', textDecoration: 'underline', fontFamily: "'DM Sans', sans-serif" }}>Terms</button>
+                {' '}and{' '}
+                <button type="button" onClick={() => navigate('/privacy')} style={{ color: '#E8281E', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', textDecoration: 'underline', fontFamily: "'DM Sans', sans-serif" }}>Privacy Policy</button>.
+              </label>
+            </div>
+            <button type="submit" disabled={loading} style={{ ...primaryBtn, opacity: loading ? 0.5 : 1 }}>
+              {loading ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Creating account…</> : 'Create Account'}
+            </button>
+          </form>
+        )}
+
+        <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '11px', color: 'rgba(154,144,135,0.4)' }}>
+          MagicSpot — Real-time Parking Monitoring
+        </div>
       </div>
+
+      <style>{`@keyframes spin{to{transform:rotate(360deg);}}`}</style>
     </div>
   );
 }
