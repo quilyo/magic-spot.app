@@ -76,7 +76,7 @@ export function LandingPage() {
       <section className="hero">
         <div className="hero-bg" />
         <div className="hero-badge"><span className="pulse" />Live parking data — New York City</div>
-        <h1>FIND YOUR<br /><span>SPOT.</span></h1>
+        <h1>LOOKING FOR<br /><span>PARKING SPOTS?</span></h1>
         <p className="hero-sub">Real-time street parking for NYC. Green dots mean open. Red dots mean taken. Know before you go.</p>
         <div className="btns">
           <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" className="store-badge dark">
@@ -251,7 +251,7 @@ export function LandingPage() {
 .mslp .hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 65% 55% at 50% 25%,rgba(232,40,30,0.13) 0%,transparent 65%),radial-gradient(ellipse 35% 25% at 15% 85%,rgba(232,40,30,0.07) 0%,transparent 60%);pointer-events:none;}
 .mslp .hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(232,40,30,0.1);border:1px solid rgba(232,40,30,0.35);border-radius:50px;padding:6px 18px;font-size:13px;font-weight:500;color:var(--red);margin-bottom:28px;animation:mslp-fadeUp 0.5s ease both;position:relative;}
 .mslp .pulse{width:7px;height:7px;border-radius:50%;background:var(--red);animation:mslp-blink 2s infinite;}
-.mslp h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(64px,11vw,128px);line-height:0.9;letter-spacing:2px;margin:0 0 24px;animation:mslp-fadeUp 0.5s 0.1s ease both;position:relative;}
+.mslp h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(44px,10vw,118px);line-height:0.9;letter-spacing:2px;margin:0 0 24px;animation:mslp-fadeUp 0.5s 0.1s ease both;position:relative;}
 .mslp h1 span{color:var(--red);}
 .mslp .hero-sub{font-size:clamp(16px,2vw,19px);color:var(--text2);font-weight:300;max-width:520px;margin:0 auto 40px;animation:mslp-fadeUp 0.5s 0.2s ease both;position:relative;}
 .mslp .btns{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;align-items:center;animation:mslp-fadeUp 0.5s 0.3s ease both;position:relative;}
